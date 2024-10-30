@@ -1,0 +1,58 @@
+DEFINE_ACTION_FUNCTION log#init
+BEGIN
+    COPY ~.../inlined/blank~ ~%workspace%/log/errors.log~
+    COPY ~.../inlined/blank~ ~%workspace%/log/warnings.log~
+    COPY ~.../inlined/blank~ ~%workspace%/log/dispatching.log~
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add
+    STR_VAR
+        file = ~~
+        message = ~~
+BEGIN
+	APPEND_OUTER ~%workspace%/log/%file%.log~ ~%message%~
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add_error
+    STR_VAR
+        message = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message file = ~errors~ END
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add_warning
+    STR_VAR
+        message = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message file = ~warnings~ END
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_add
+    STR_VAR
+        item = ~~
+        creature = ~~
+        mod_name = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message = ~%item% : Added to %creature% inventory (%mod_name%)~ END
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_equip
+    STR_VAR
+        item = ~~
+        creature = ~~
+        slot = ~~
+        mod_name = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message = ~%item% : Equipped to %creature% in %slot% slot (%mod_name%)~ END
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_replace
+    STR_VAR
+        item = ~~
+        creature = ~~
+        slot = ~~
+        item_replaced = ~~
+        mod_name = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message = ~%item% : Replace %item_replaced% to %creature% in %slot% slot (%mod_name%)~ END
+END

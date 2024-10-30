@@ -1,0 +1,46 @@
+BACKUP ~weidu_external/backup/%MOD_FOLDER%~
+AUTHOR ~Selphira (https://www.baldursgateworld.fr/memberlist.php?mode=viewprofile&u=5323)~
+
+VERSION ~1~
+
+AUTO_EVAL_STRINGS
+
+ALWAYS
+    OUTER_SPRINT ~workspace~ "weidu_external/workspace/%MOD_FOLDER%"
+
+    <<<<<<<< .../inlined/blank
+>>>>>>>>
+
+    INCLUDE ~%MOD_FOLDER%/lib/log.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/merge_lists.tph~
+END
+
+LANGUAGE ~Francais~ ~french~
+         ~%MOD_FOLDER%/tra/french/setup.tra~
+
+BEGIN ~Test~ DESIGNATED 0
+
+LAF ~log#init~ END
+LAF ~merge_lists~ END
+
+/*
+COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
+END
+*/
+
+/*
+- Fusionner l'ensemble des fichiers .2da présents dans tous les mods du dossier du jeu
+  Eviter les doublons !!! Idem que pour les fichiers .ids
+  Dans ces fichiers, les groupes listés dedans seront remplacés par leur véritables cibles ?
+- Charger les listes en mémoire
+- Charger toutes les créatures, magasins, trésors aléatoires et conteneurs en mémoire
+  Créer divers tableaux pour les créatures qui vont permettre de les filtrer facilement
+  > Par exemple, un tableau par race, par classe, etc... ISSET($tableauClass(%class%)) => cible gardée !
+  Créer divers tableaux pour les créatures afin de savoir quels types d'équipement ils peuvent avoir
+
+
+Créer un groupe contenant toutes les créatures qui ne peuvent pas équiper d'objets
+  > Créer un groupe par slot !!
+  > Le groupe de toutes les créatures listera les groupes de chaque slot
+
+*/

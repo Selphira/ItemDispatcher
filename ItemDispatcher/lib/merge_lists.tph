@@ -1,0 +1,158 @@
+OUTER_TEXT_SPRINT ~regex_folders~ ~^.*[^\.]$~
+OUTER_TEXT_SPRINT ~regex_2da_files~ ~^.*\.2da$~
+
+/*
+ * Cette fonction va fusionner le contenu des différentes listes dans un dossier de travail.
+ * Elle va scanner le dossier d'installation à la recherche des mods qui ont implémentés des listes pour ItemDispatcher.
+ *
+ */
+DEFINE_ACTION_FUNCTION ~merge_lists~
+BEGIN
+    ACTION_CLEAR_ARRAY ~folders~
+	GET_DIRECTORY_ARRAY ~folders~ ~.~ ~%regex_folders%~
+	ACTION_PHP_EACH ~folders~ AS _ => folder BEGIN
+        OUTER_TEXT_SPRINT ~dispatching_folder~ ~%folder%/dispatching~
+        OUTER_PATCH_SAVE ~mod_name~ ~%folder%~ BEGIN REPLACE_TEXTUALLY ~./~ ~~ END
+	    ACTION_IF DIRECTORY_EXISTS ~%dispatching_folder%~ BEGIN
+	        LAF ~merge_lists#folder~ STR_VAR folder = ~%dispatching_folder%~ END
+	    END
+	END
+END
+
+DEFINE_ACTION_FUNCTION ~merge_lists#folder~
+    STR_VAR
+        folder = ~~
+        prefix = ~~
+        type = ~~
+BEGIN
+    ACTION_CLEAR_ARRAY ~files~
+    ACTION_CLEAR_ARRAY ~folders~
+
+	GET_FILE_ARRAY ~files~ ~%folder%~ ~%regex_2da_files%~
+	GET_DIRECTORY_ARRAY ~folders~ ~%folder%~ ~%regex_folders%~
+
+	ACTION_PHP_EACH ~files~ AS _ => file BEGIN
+	    LAF ~merge_lists#file~ STR_VAR file prefix type END
+	END
+
+	ACTION_IF ~%type%~ STRING_EQUAL_CASE ~~ BEGIN
+        ACTION_PHP_EACH ~folders~ AS _ => subfolder BEGIN
+            OUTER_PATCH_SAVE type ~%subfolder%~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+            LAF ~merge_lists#folder~ STR_VAR folder = ~%subfolder%~ type END
+        END
+	END
+	ELSE BEGIN
+        ACTION_PHP_EACH ~folders~ AS _ => subfolder BEGIN
+            OUTER_PATCH_SAVE new_prefix ~%prefix%%subfolder%_~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+            LAF ~merge_lists#folder~ STR_VAR folder = ~%subfolder%~ prefix = ~%new_prefix%~ type END
+        END
+	END
+END
+
+DEFINE_ACTION_FUNCTION ~merge_lists#file~
+    STR_VAR
+        file = ~~
+        prefix = ~~
+        type = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~file_name~ ~%file%~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+    OUTER_TEXT_SPRINT ~file_path~ ~%type%/%prefix%%file_name%~
+    OUTER_TEXT_SPRINT ~work_file_path~ ~%workspace%/%file_path%~
+
+    ACTION_IF ~%type%~ STRING_EQUAL_CASE ~~ BEGIN
+        OUTER_PATCH_SAVE ~type~ ~%file_name%~ BEGIN REPLACE_TEXTUALLY ~\.2da~ ~~ END
+    END
+
+    ACTION_MATCH ~%type%~
+    WITH
+      ~items~     BEGIN LAF ~merge_lists#file_items~ STR_VAR file END END
+      ~groups~    BEGIN LAF ~merge_lists#file_groups~ STR_VAR file END END
+      ~treasures~ BEGIN LAF ~merge_lists#file_treasures~ STR_VAR file END END
+      DEFAULT     PRINT ~Type %type% a gerer~
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~merge_lists#file_items~
+    STR_VAR
+        file = ~~
+BEGIN
+    ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+        COPY ~.../inlined/blank~ ~%work_file_path%~
+    END
+    COPY ~%file%~ ~override~
+        READ_2DA_ENTRIES_NOW ~rows~ 10
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 item
+            READ_2DA_ENTRY_FORMER ~rows~ row 1 target
+            READ_2DA_ENTRY_FORMER ~rows~ row 2 targetQuantity
+            READ_2DA_ENTRY_FORMER ~rows~ row 3 source
+            READ_2DA_ENTRY_FORMER ~rows~ row 4 itemQuantity
+            READ_2DA_ENTRY_FORMER ~rows~ row 5 chapter
+            READ_2DA_ENTRY_FORMER ~rows~ row 6 difficulty
+            READ_2DA_ENTRY_FORMER ~rows~ row 7 equipable
+            READ_2DA_ENTRY_FORMER ~rows~ row 8 stealable
+            READ_2DA_ENTRY_FORMER ~rows~ row 9 chance
+
+            SPRINT ~line~ ~%item%%TAB%%target%%TAB%%targetQuantity%%TAB%%source%%TAB%%itemQuantity%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%chance%~
+
+            LPF ~merge_lists#append_line~ STR_VAR line END
+        END
+    BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~merge_lists#file_groups~
+    STR_VAR
+        file = ~~
+BEGIN
+    ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+        COPY ~.../inlined/blank~ ~%work_file_path%~
+    END
+    COPY ~%file%~ ~override~
+        READ_2DA_ENTRIES_NOW ~rows~ 1
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 target
+
+            SPRINT ~line~ ~%target%~
+
+            LPF ~merge_lists#append_line~ STR_VAR line END
+        END
+    BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~merge_lists#file_treasures~
+    STR_VAR
+        file = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~treasure_name~ ~%file_name%~ BEGIN REPLACE_TEXTUALLY ~\.2da~ ~~ END
+
+    ACTION_IF STRING_LENGTH ~%treasure_name%~ <= 8 BEGIN
+        ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+            COPY ~.../inlined/blank~ ~%work_file_path%~
+        END
+        COPY ~%file%~ ~override~
+            READ_2DA_ENTRIES_NOW ~rows~ 1
+            FOR (row = 0; row < rows; ++row) BEGIN
+                READ_2DA_ENTRY_FORMER ~rows~ row 0 item
+
+                SPRINT ~line~ ~%item%~
+
+                LPF ~merge_lists#append_line~ STR_VAR line END
+            END
+        BUT_ONLY
+    END
+    ELSE BEGIN
+        LAF ~log#add_error~ STR_VAR message = ~%treasure_name% : Treasure list name exceeds 8 characters (%mod_name%)~ END
+    END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~merge_lists#append_line~
+    STR_VAR
+        line = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~unless~ ~%line%~ BEGIN
+        REPLACE_TEXTUALLY ~\.~ ~\\.~
+        REPLACE_TEXTUALLY ~\?~ ~\\?~
+        REPLACE_TEXTUALLY ~\*~ ~\\*~
+    END
+    APPEND_OUTER ~%work_file_path%~ ~%line%%TAB%%mod_name%~ UNLESS ~%unless%~
+END
