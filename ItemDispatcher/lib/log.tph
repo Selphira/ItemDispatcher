@@ -10,6 +10,7 @@ DEFINE_DIMORPHIC_FUNCTION log#add
         file = ~~
         message = ~~
 BEGIN
+    SILENT
 	APPEND_OUTER ~%workspace%/log/%file%.log~ ~%message%~
 END
 
@@ -18,6 +19,7 @@ DEFINE_DIMORPHIC_FUNCTION log#add_error
         message = ~~
 BEGIN
     LAF ~log#add~ STR_VAR message file = ~errors~ END
+    PRINT ~ERROR: %message%~
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_warning
@@ -25,6 +27,7 @@ DEFINE_DIMORPHIC_FUNCTION log#add_warning
         message = ~~
 BEGIN
     LAF ~log#add~ STR_VAR message file = ~warnings~ END
+    PRINT ~WARNING: %message%~
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_add
