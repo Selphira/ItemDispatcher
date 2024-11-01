@@ -18,16 +18,16 @@ DEFINE_DIMORPHIC_FUNCTION log#add_error
     STR_VAR
         message = ~~
 BEGIN
-    LAF ~log#add~ STR_VAR message file = ~errors~ END
     PRINT ~ERROR: %message%~
+    LAF ~log#add~ STR_VAR message file = ~errors~ END
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_warning
     STR_VAR
         message = ~~
 BEGIN
-    LAF ~log#add~ STR_VAR message file = ~warnings~ END
     PRINT ~WARNING: %message%~
+    LAF ~log#add~ STR_VAR message file = ~warnings~ END
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_add

@@ -1,0 +1,266 @@
+OUTER_TEXT_SPRINT ~regex_folders~ ~^.*[^\.]$~
+OUTER_TEXT_SPRINT ~regex_2da_files~ ~^.*\.2da$~
+
+/*
+ * Cette fonction va fusionner le contenu des différentes listes dans un dossier de travail.
+ * Elle va scanner le dossier d'installation à la recherche des mods qui ont implémentés des listes pour ItemDispatcher.
+ *
+ */
+DEFINE_ACTION_FUNCTION ~lists#merge~
+BEGIN
+    ACTION_CLEAR_ARRAY ~folders~
+	GET_DIRECTORY_ARRAY ~folders~ ~.~ ~%regex_folders%~
+	ACTION_PHP_EACH ~folders~ AS _ => folder BEGIN
+        OUTER_TEXT_SPRINT ~dispatching_folder~ ~%folder%/dispatching~
+        OUTER_PATCH_SAVE ~mod_name~ ~%folder%~ BEGIN REPLACE_TEXTUALLY ~./~ ~~ END
+	    ACTION_IF DIRECTORY_EXISTS ~%dispatching_folder%~ BEGIN
+	        LAF ~lists#merge#folder~ STR_VAR folder = ~%dispatching_folder%~ END
+	    END
+	END
+END
+
+DEFINE_ACTION_FUNCTION ~lists#merge#folder~
+    STR_VAR
+        folder = ~~
+        prefix = ~~
+        type = ~~
+BEGIN
+    ACTION_CLEAR_ARRAY ~files~
+    ACTION_CLEAR_ARRAY ~folders~
+
+	GET_FILE_ARRAY ~files~ ~%folder%~ ~%regex_2da_files%~
+	GET_DIRECTORY_ARRAY ~folders~ ~%folder%~ ~%regex_folders%~
+
+	ACTION_PHP_EACH ~files~ AS _ => file BEGIN
+	    LAF ~lists#merge#file~ STR_VAR file prefix type END
+	END
+
+	ACTION_IF ~%type%~ STRING_EQUAL_CASE ~~ BEGIN
+        ACTION_PHP_EACH ~folders~ AS _ => subfolder BEGIN
+            OUTER_PATCH_SAVE type ~%subfolder%~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+            LAF ~lists#merge#folder~ STR_VAR folder = ~%subfolder%~ type END
+        END
+	END
+	ELSE BEGIN
+        ACTION_PHP_EACH ~folders~ AS _ => subfolder BEGIN
+            OUTER_PATCH_SAVE new_prefix ~%prefix%%subfolder%-~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+            LAF ~lists#merge#folder~ STR_VAR folder = ~%subfolder%~ prefix = ~%new_prefix%~ type END
+        END
+	END
+END
+
+DEFINE_ACTION_FUNCTION ~lists#merge#file~
+    STR_VAR
+        file = ~~
+        prefix = ~~
+        type = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~file_name~ ~%file%~ BEGIN REPLACE_TEXTUALLY ~%folder%/~ ~~ END
+    OUTER_TEXT_SPRINT ~file_path~ ~%type%/%prefix%%file_name%~
+    OUTER_TEXT_SPRINT ~work_file_path~ ~%workspace%/%file_path%~
+
+    ACTION_IF ~%type%~ STRING_EQUAL_CASE ~~ BEGIN
+        OUTER_PATCH_SAVE ~type~ ~%file_name%~ BEGIN REPLACE_TEXTUALLY ~\.2da~ ~~ END
+    END
+
+    ACTION_MATCH ~%type%~
+    WITH
+      ~items~     BEGIN LAF ~lists#merge#file_items~ STR_VAR file END END
+      ~groups~    BEGIN LAF ~lists#merge#file_groups~ STR_VAR file END END
+      ~treasures~ BEGIN LAF ~lists#merge#file_treasures~ STR_VAR file END END
+      DEFAULT     LAF ~log#add_warning~ STR_VAR message = ~Unsupported file type : %file% (%mod_name%)~ END
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~lists#merge#file_items~
+    STR_VAR
+        file = ~~
+BEGIN
+    ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+        COPY ~.../inlined/blank~ ~%work_file_path%~
+    END
+    COPY ~%file%~ ~override~
+        READ_2DA_ENTRIES_NOW ~rows~ 10
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 item
+            READ_2DA_ENTRY_FORMER ~rows~ row 1 target
+            READ_2DA_ENTRY_FORMER ~rows~ row 2 targetQuantity
+            READ_2DA_ENTRY_FORMER ~rows~ row 3 source
+            READ_2DA_ENTRY_FORMER ~rows~ row 4 itemQuantity
+            READ_2DA_ENTRY_FORMER ~rows~ row 5 chapter
+            READ_2DA_ENTRY_FORMER ~rows~ row 6 difficulty
+            READ_2DA_ENTRY_FORMER ~rows~ row 7 equipable
+            READ_2DA_ENTRY_FORMER ~rows~ row 8 stealable
+            READ_2DA_ENTRY_FORMER ~rows~ row 9 chance
+
+            SPRINT ~line~ ~%item%%TAB%%target%%TAB%%targetQuantity%%TAB%%source%%TAB%%itemQuantity%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%chance%%TAB%%mod_name%~
+
+            LPF ~lists#merge#append_line~ STR_VAR line END
+        END
+    BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~lists#merge#file_groups~
+    STR_VAR
+        file = ~~
+BEGIN
+    ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+        COPY ~.../inlined/blank~ ~%work_file_path%~
+    END
+    COPY ~%file%~ ~override~
+        READ_2DA_ENTRIES_NOW ~rows~ 1
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 target
+
+            SPRINT ~line~ ~%target%%TAB%%mod_name%~
+
+            LPF ~lists#merge#append_line~ STR_VAR line END
+        END
+    BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~lists#merge#file_treasures~
+    STR_VAR
+        file = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~treasure_name~ ~%file_name%~ BEGIN REPLACE_TEXTUALLY ~\.2da~ ~~ END
+
+    ACTION_IF STRING_LENGTH ~%treasure_name%~ <= 8 BEGIN
+        ACTION_IF (NOT FILE_EXISTS ~%work_file_path%~) BEGIN
+            COPY ~.../inlined/blank~ ~%work_file_path%~
+        END
+        COPY ~%file%~ ~override~
+            READ_2DA_ENTRIES_NOW ~rows~ 1
+            FOR (row = 0; row < rows; ++row) BEGIN
+                READ_2DA_ENTRY_FORMER ~rows~ row 0 item
+
+                SPRINT ~line~ ~%item%%TAB%%mod_name%~
+
+                LPF ~lists#merge#append_line~ STR_VAR line END
+            END
+        BUT_ONLY
+    END
+    ELSE BEGIN
+        LAF ~log#add_error~ STR_VAR message = ~%treasure_name% : Treasure list name exceeds 8 characters (%mod_name%)~ END
+    END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~lists#merge#append_line~
+    STR_VAR
+        line = ~~
+BEGIN
+    OUTER_PATCH_SAVE ~unless~ ~%line%~ BEGIN
+        REPLACE_TEXTUALLY ~\.~ ~\\.~
+        REPLACE_TEXTUALLY ~\?~ ~\\?~
+        REPLACE_TEXTUALLY ~\*~ ~\\*~
+    END
+    APPEND_OUTER ~%work_file_path%~ ~%line%~ UNLESS ~%unless%~
+END
+
+DEFINE_ACTION_MACRO ~lists#load~
+BEGIN
+    LAM ~lists#load#items~
+    LAM ~lists#load#groups~
+    LAM ~lists#load#treasures~
+END
+
+DEFINE_ACTION_MACRO ~lists#load#items~
+BEGIN
+END
+
+/*
+ * Cette macro construit les tableaux contenant la liste des créatures contenues dans chaque groupe
+ *
+ * Chaque tableau de groupe ressemble à ceci :
+ *
+ * $group_%group_name%(0) = creature1
+ * $group_%group_name%(1) = creature2
+ * $group_%group_name%(2) = creature3
+ * $group_%group_name%(3) = creature4
+ *
+ * Egalement, une entrée dans le tableau $groups est ajoutée avec le nombre d'éléments du tableau
+ *
+ * $groups(~%group_name%~) = 4
+ */
+DEFINE_ACTION_MACRO ~lists#load#groups~
+BEGIN
+	ACTION_DEFINE_ARRAY ~groups~ BEGIN END
+
+	COPY "%workspace%/groups" "override"
+	    CLEAR_ARRAY ~visited_groups~
+	    CLEAR_ARRAY ~temporary_groups~
+
+        PATCH_DEFINE_ARRAY ~visited_groups~ BEGIN END
+        PATCH_DEFINE_ARRAY ~temporary_groups~ BEGIN END
+
+	    LPF ~lists#load#group~ STR_VAR group_name = ~%SOURCE_RES%~ RET_ARRAY temporary_groups END
+
+	    SET count = 0
+        PATCH_PHP_EACH ~temporary_groups~ AS group => value BEGIN
+            SPRINT $~group_%SOURCE_RES%~(~%count%~) ~%group_2%~
+	        SET count += 1
+        END
+        SET $groups(~%SOURCE_RES%~) = count
+	BUT_ONLY
+END
+
+DEFINE_PATCH_FUNCTION ~lists#load#group~
+    INT_VAR
+        index = 0
+    STR_VAR
+        group_name = ~~
+    RET
+        index
+    RET_ARRAY
+        temporary_groups
+BEGIN
+    PATCH_IF NOT VARIABLE_IS_SET $visited_groups(~%group_name%~) BEGIN
+	    SET $visited_groups(~%group_name%~) = 1
+
+        READ_2DA_ENTRIES_NOW ~rows~ 2
+
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 target
+            READ_2DA_ENTRY_FORMER ~rows~ row 1 mod_name
+
+            PATCH_IF ~%target%~ STRING_COMPARE_REGEXP ~^.*\.grp$~ == 0 BEGIN
+                INNER_PATCH_SAVE ~ref_group_name~ ~%target%~ BEGIN REPLACE_TEXTUALLY ~\.grp$~ ~~ END
+                SPRINT ~work_file_path~ ~%workspace%/groups/%ref_group_name%.2da~
+                PATCH_IF FILE_EXISTS ~%work_file_path%~ BEGIN
+                    INNER_ACTION BEGIN
+                        COPY ~%work_file_path%~ ~~
+                            LPF ~lists#load#group~ STR_VAR group_name = ~%SOURCE_RES%~ RET_ARRAY temporary_groups END
+                        BUT_ONLY
+                    END
+                END
+                ELSE BEGIN
+                    LPF ~log#add_error~ STR_VAR message = ~%ref_group_name% : Group referenced in %group_name%.grp doesn't exist (%mod_name%)~ END
+                END
+            END
+            ELSE PATCH_IF ~%target%~ STRING_COMPARE_REGEXP ~^.*\.cre$~ == 0 BEGIN
+                PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
+                    SET $temporary_groups(~%group_name%~ ~%index%~ ~%target%~ ~%mod_name%~) = 1
+                    SET index += 1
+                END
+                ELSE BEGIN
+                    LPF ~log#add_warning~ STR_VAR message = ~%target% : Target not exist in group %SOURCE_RES% (%mod_name%)~ END
+                END
+            END
+            ELSE BEGIN
+                LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
+            END
+        END
+    END
+    ELSE BEGIN
+        SPRINT ~groups_path~ ~~
+        PATCH_PHP_EACH ~visited_groups~ AS group => _ BEGIN
+            SPRINT ~groups_path~ ~%groups_path%%group% > ~
+        END
+        SPRINT ~groups_path~ ~%groups_path%%group_name%~
+        LPF ~log#add_warning~ STR_VAR message = ~%group_name% : Circular reference %groups_path% (%mod_name%)~ END
+    END
+END
+
+DEFINE_ACTION_MACRO ~lists#load#treasures~
+BEGIN
+END

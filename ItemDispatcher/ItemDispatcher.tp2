@@ -12,7 +12,7 @@ ALWAYS
 >>>>>>>>
 
     INCLUDE ~%MOD_FOLDER%/lib/log.tph~
-    INCLUDE ~%MOD_FOLDER%/lib/merge_lists.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/lists.tph~
 END
 
 LANGUAGE ~Francais~ ~french~
@@ -21,7 +21,10 @@ LANGUAGE ~Francais~ ~french~
 BEGIN ~Test~ DESIGNATED 0
 
 LAF ~log#init~ END
-LAF ~merge_lists~ END
+LAF ~lists#merge~ END // Récupération des listes présentes dans les autres mods
+LAM ~lists#load~      // Création des tableaux basés sur les listes
+//LAM ~data#load~       // Création des tableaux basés sur les données du jeu
+//LAF ~dispatching~ END // Répartition des objets !
 
 /*
 COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
@@ -29,10 +32,6 @@ END
 */
 
 /*
-- Fusionner l'ensemble des fichiers .2da présents dans tous les mods du dossier du jeu
-  Eviter les doublons !!! Idem que pour les fichiers .ids
-  Dans ces fichiers, les groupes listés dedans seront remplacés par leur véritables cibles ?
-- Charger les listes en mémoire
 - Charger toutes les créatures, magasins, trésors aléatoires et conteneurs en mémoire
   Créer divers tableaux pour les créatures qui vont permettre de les filtrer facilement
   > Par exemple, un tableau par race, par classe, etc... ISSET($tableauClass(%class%)) => cible gardée !
