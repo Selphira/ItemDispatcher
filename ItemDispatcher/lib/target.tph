@@ -1,0 +1,12 @@
+DEFINE_PATCH_FUNCTION ~target#is_complex~
+    STR_VAR
+        target = ~~
+    RET
+        is_complex
+BEGIN
+    SET is_complex = 0
+
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~.*[&!].+~ == 0 BEGIN
+        SET is_complex = 1
+    END
+END

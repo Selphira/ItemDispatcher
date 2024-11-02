@@ -154,7 +154,7 @@ BEGIN
         REPLACE_TEXTUALLY ~\?~ ~\\?~
         REPLACE_TEXTUALLY ~\*~ ~\\*~
     END
-    APPEND_OUTER ~%work_file_path%~ ~%line%~ UNLESS ~%unless%~
+    APPEND_OUTER ~%work_file_path%~ ~%line%~ UNLESS ~^%unless%~
 END
 
 DEFINE_ACTION_MACRO ~lists#load~
@@ -197,7 +197,7 @@ BEGIN
 
 	    SET count = 0
         PATCH_PHP_EACH ~temporary_groups~ AS group => value BEGIN
-            SPRINT $~group_%SOURCE_RES%~(~%count%~) ~%group_2%~
+            SPRINT $~group_%SOURCE_RES%~(~%count%~) ~%group_0%~
 	        SET count += 1
         END
         SET $groups(~%SOURCE_RES%~) = count
@@ -205,12 +205,8 @@ BEGIN
 END
 
 DEFINE_PATCH_FUNCTION ~lists#load#group~
-    INT_VAR
-        index = 0
     STR_VAR
         group_name = ~~
-    RET
-        index
     RET_ARRAY
         temporary_groups
 BEGIN
@@ -223,31 +219,30 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row 0 target
             READ_2DA_ENTRY_FORMER ~rows~ row 1 mod_name
 
-            PATCH_IF ~%target%~ STRING_COMPARE_REGEXP ~^.*\.grp$~ == 0 BEGIN
-                INNER_PATCH_SAVE ~ref_group_name~ ~%target%~ BEGIN REPLACE_TEXTUALLY ~\.grp$~ ~~ END
-                SPRINT ~work_file_path~ ~%workspace%/groups/%ref_group_name%.2da~
-                PATCH_IF FILE_EXISTS ~%work_file_path%~ BEGIN
-                    INNER_ACTION BEGIN
-                        COPY ~%work_file_path%~ ~~
-                            LPF ~lists#load#group~ STR_VAR group_name = ~%SOURCE_RES%~ RET_ARRAY temporary_groups END
-                        BUT_ONLY
-                    END
-                END
-                ELSE BEGIN
-                    LPF ~log#add_error~ STR_VAR message = ~%ref_group_name% : Group referenced in %group_name%.grp doesn't exist (%mod_name%)~ END
-                END
-            END
-            ELSE PATCH_IF ~%target%~ STRING_COMPARE_REGEXP ~^.*\.cre$~ == 0 BEGIN
-                PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
-                    SET $temporary_groups(~%group_name%~ ~%index%~ ~%target%~ ~%mod_name%~) = 1
-                    SET index += 1
-                END
-                ELSE BEGIN
-                    LPF ~log#add_warning~ STR_VAR message = ~%target% : Target not exist in group %SOURCE_RES% (%mod_name%)~ END
-                END
+            LPF ~target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
+
+            PATCH_IF is_complex_target == 1 BEGIN
+                SPRINT ~target_type~ ~complex~
             END
             ELSE BEGIN
-                LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
+                INNER_PATCH_SAVE ~target_type~ ~%target%~ BEGIN REPLACE_TEXTUALLY ~^.*\.~ ~~ END
+                INNER_PATCH_SAVE ~target_name~ ~%target%~ BEGIN REPLACE_TEXTUALLY ~\..*$~ ~~ END
+            END
+
+            PATCH_MATCH ~%target_type%~
+            WITH
+                ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
+                ~cre~   BEGIN LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END END
+                ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~kit_%target_name%~       RET_ARRAY temporary_groups END END
+                ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~general_%target_name%~   RET_ARRAY temporary_groups END END
+                ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~race_%target_name%~      RET_ARRAY temporary_groups END END
+                ~cls~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~class_%target_name%~     RET_ARRAY temporary_groups END END
+                ~spc~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~special_%target_name%~   RET_ARRAY temporary_groups END END
+                ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~gender_%target_name%~    RET_ARRAY temporary_groups END END
+                ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~alignment_%target_name%~ RET_ARRAY temporary_groups END END
+                ~lvl~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~level_%target_name%~     RET_ARRAY temporary_groups END END
+                ~complex~ BEGIN LPF ~log#add_error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
+                DEFAULT LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
             END
         END
     END
@@ -258,6 +253,47 @@ BEGIN
         END
         SPRINT ~groups_path~ ~%groups_path%%group_name%~
         LPF ~log#add_warning~ STR_VAR message = ~%group_name% : Circular reference %groups_path% (%mod_name%)~ END
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~lists#load#group.grp~
+    RET_ARRAY
+        temporary_groups
+BEGIN
+    INNER_PATCH_SAVE ~ref_group_name~ ~%target%~ BEGIN REPLACE_TEXTUALLY ~\.grp$~ ~~ END
+    SPRINT ~work_file_path~ ~%workspace%/groups/%ref_group_name%.2da~
+    PATCH_IF FILE_EXISTS ~%work_file_path%~ BEGIN
+        INNER_ACTION BEGIN
+            COPY ~%work_file_path%~ ~~
+                LPF ~lists#load#group~ STR_VAR group_name = ~%SOURCE_RES%~ RET_ARRAY temporary_groups END
+            BUT_ONLY
+        END
+    END
+    ELSE BEGIN
+        LPF ~log#add_error~ STR_VAR message = ~%ref_group_name% : Group referenced in %group_name%.grp doesn't exist (%mod_name%)~ END
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~lists#load#group.cre~
+    RET_ARRAY
+        temporary_groups
+BEGIN
+    PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
+        SET $temporary_groups(~%target%~) = 1
+    END
+    ELSE BEGIN
+        LPF ~log#add_warning~ STR_VAR message = ~%target% : Target not exist in group %SOURCE_RES% (%mod_name%)~ END
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~lists#load#group.basic~
+    STR_VAR
+        group = ~~
+    RET_ARRAY
+        temporary_groups
+BEGIN
+    PATCH_PHP_EACH ~%group%~ AS _ => creature BEGIN
+        SET $temporary_groups(~%creature%~) = 1
     END
 END
 
