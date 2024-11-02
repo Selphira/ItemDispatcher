@@ -13,6 +13,7 @@ ALWAYS
 
     INCLUDE ~%MOD_FOLDER%/lib/log.tph~
     INCLUDE ~%MOD_FOLDER%/lib/lists.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/data.tph~
 END
 
 LANGUAGE ~Francais~ ~french~
@@ -23,7 +24,7 @@ BEGIN ~Test~ DESIGNATED 0
 LAF ~log#init~ END
 LAF ~lists#merge~ END // Récupération des listes présentes dans les autres mods
 LAM ~lists#load~      // Création des tableaux basés sur les listes
-//LAM ~data#load~       // Création des tableaux basés sur les données du jeu
+LAM ~data#load~       // Création des tableaux basés sur les données du jeu
 //LAF ~dispatching~ END // Répartition des objets !
 
 /*

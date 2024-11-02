@@ -1,0 +1,179 @@
+DEFINE_ACTION_MACRO ~data#load~
+BEGIN
+    LAM ~data#load#creatures~
+    LAM ~data#load#items~
+END
+
+/*
+ * Crée des tableaux pour chaque type de filtre supporté à partir des données des créatures du jeu.
+ *
+ * Tableau contenant le nombre de créatures correspondant au filtre
+ * $foo(~bar~) = 2
+ *
+ * Tableau contenant la liste des créatures correspondant au filtre
+ * $~foo%bar%~(~0~) ~creature1~
+ * $~foo%bar%~(~1~) ~creature2~
+ */
+DEFINE_ACTION_MACRO ~data#load#creatures~
+BEGIN
+    LAF ~data#load#ids~ STR_VAR file = ~kit~ RET_ARRAY kits = array END
+    LAF ~data#load#ids~ STR_VAR file = ~general~ RET_ARRAY generals = array END
+    LAF ~data#load#ids~ STR_VAR file = ~race~ RET_ARRAY races = array END
+    LAF ~data#load#ids~ STR_VAR file = ~class~ RET_ARRAY classes = array END
+    LAF ~data#load#ids~ STR_VAR file = ~specific~ RET_ARRAY specifics = array END
+    LAF ~data#load#ids~ STR_VAR file = ~gender~ RET_ARRAY genders = array END
+    LAF ~data#load#ids~ STR_VAR file = ~alignmen~ RET_ARRAY alignments = array END
+    LAF ~data#load#levels~ RET_ARRAY levels END
+
+	COPY_EXISTING_REGEXP GLOB ~^.+\.cre$~ ~override~
+	    SPRINT ~creature~ ~%SOURCE_FILE%~
+
+		READ_BYTE  0x234 ~level~
+		READ_SHORT 0x246 ~kit~
+		READ_BYTE  0x271 ~general~
+		READ_BYTE  0x272 ~race~
+		READ_BYTE  0x273 ~class~
+		READ_BYTE  0x274 ~specific~
+		READ_BYTE  0x275 ~gender~
+		READ_BYTE  0x27b ~alignment~
+
+		LOOKUP_IDS_SYMBOL_OF_INT kit_name ~kit~ kit
+		LOOKUP_IDS_SYMBOL_OF_INT general_name ~general~ general
+		LOOKUP_IDS_SYMBOL_OF_INT race_name ~race~ race
+		LOOKUP_IDS_SYMBOL_OF_INT class_name ~class~ class
+		LOOKUP_IDS_SYMBOL_OF_INT specific_name ~specific~ specific
+		LOOKUP_IDS_SYMBOL_OF_INT gender_name ~gender~ gender
+		LOOKUP_IDS_SYMBOL_OF_INT alignment_name ~alignmen~ alignment
+
+		TO_LOWER creature
+		TO_LOWER kit_name
+		TO_LOWER general_name
+		TO_LOWER race_name
+		TO_LOWER class_name
+		TO_LOWER specific_name
+		TO_LOWER gender_name
+		TO_LOWER alignment_name
+
+		PATCH_IF NOT VARIABLE_IS_SET $kits(~%kit_name%~) BEGIN
+		    PATCH_IF kit != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
+		    END
+		    SPRINT ~kit_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $generals(~%general_name%~) BEGIN
+		    PATCH_IF general != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
+		    END
+		    SPRINT ~general_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $races(~%race_name%~) BEGIN
+		    PATCH_IF race != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
+		    END
+		    SPRINT ~race_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $classes(~%class_name%~) BEGIN
+		    PATCH_IF class != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
+		    END
+		    SPRINT ~class_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $specifics(~%specific_name%~) BEGIN
+		    PATCH_IF specific != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
+		    END
+		    SPRINT ~specific_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $genders(~%gender_name%~) BEGIN
+		    PATCH_IF gender != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
+		    END
+		    SPRINT ~gender_name~ ~none~
+		END
+
+		PATCH_IF NOT VARIABLE_IS_SET $alignments(~%alignment_name%~) BEGIN
+		    PATCH_IF alignment != 0 BEGIN
+		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
+		    END
+		    SPRINT ~alignment_name~ ~none~
+		END
+
+        SET ~index~ = $kits(~%kit_name%~)
+        SET $kits(~%kit_name%~) += 1
+        SPRINT $~kit_%kit_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $generals(~%general_name%~)
+        SET $generals(~%general_name%~) += 1
+        SPRINT $~general_%general_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $races(~%race_name%~)
+        SET $races(~%race_name%~) += 1
+        SPRINT $~race_%race_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $classes(~%class_name%~)
+        SET $classes(~%class_name%~) += 1
+        SPRINT $~class_%class_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $specifics(~%specific_name%~)
+        SET $specifics(~%specific_name%~) += 1
+        SPRINT $~specific_%specific_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $genders(~%gender_name%~)
+        SET $genders(~%gender_name%~) += 1
+        SPRINT $~gender_%gender_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $alignments(~%alignment_name%~)
+        SET $alignments(~%alignment_name%~) += 1
+        SPRINT $~alignment_%alignment_name%~(~%index%~) ~%creature%~
+
+        SET ~index~ = $levels(~%level%~)
+        SET $levels(~%level%~) += 1
+        SPRINT $~level_%level%~(~%index%~) ~%creature%~
+	BUT_ONLY
+END
+
+DEFINE_ACTION_MACRO ~data#load#items~
+BEGIN
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#ids~
+    STR_VAR
+        file = ~~
+    RET_ARRAY
+        array
+BEGIN
+    ACTION_CLEAR_ARRAY  ~array~
+    ACTION_DEFINE_ARRAY ~array~ BEGIN END
+
+    COPY_EXISTING ~%file%.ids~ ~override~
+        READ_2DA_ENTRIES_NOW ~rows~ 2
+
+        SET $array(~none~) = 0
+
+        FOR (row = 0; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row 0 id
+            READ_2DA_ENTRY_FORMER ~rows~ row 1 name
+
+		    TO_LOWER name
+
+            PATCH_IF NOT (~%id%~ STRING_EQUAL ~IDS~ OR ~%name%~ STRING_EQUAL ~~) BEGIN
+                SET $array(~%name%~) = 0
+            END
+        END
+    BUT_ONLY
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#levels~
+    RET_ARRAY
+        levels
+BEGIN
+    ACTION_DEFINE_ARRAY ~levels~ BEGIN END
+    OUTER_FOR (level = 0; level < 50; ++level) BEGIN
+        OUTER_SET $levels(~%level%~) = 0
+    END
+END
