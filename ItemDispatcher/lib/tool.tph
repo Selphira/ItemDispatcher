@@ -1,0 +1,43 @@
+DEFINE_PATCH_FUNCTION ~tool#quantity~
+    STR_VAR
+        value = ~~
+    RET
+        is_valid
+        is_percent
+        quantity
+BEGIN
+    SET is_valid = 1
+    SET is_percent = 0
+    SET quantity = 1
+
+    PATCH_IF IS_AN_INT value AND value > 0 BEGIN
+        SET quantity = value
+    END
+    ELSE PATCH_IF ~%value%~ STRING_EQUAL ~-~ BEGIN
+        SET quantity = 1
+    END
+    ELSE PATCH_IF ~%value%~ STRING_EQUAL ~*~ BEGIN
+        SET is_percent = 1
+        SET quantity = 100
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^[0-9]+%$~ == 0 BEGIN
+        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~%~ ~~ END
+        SET is_percent = 1
+        SET quantity = value
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
+        INNER_PATCH ~%value%~ BEGIN
+            REPLACE_EVALUATE ~\([0-9]+\)-\([0-9]+\)~ BEGIN
+                PATCH_IF MATCH1 > MATCH2 BEGIN
+                    SET quantity = RANDOM(MATCH2 MATCH1)
+                END
+                ELSE BEGIN
+                    SET quantity = RANDOM(MATCH1 MATCH2)
+                END
+            END ~~
+        END
+    END
+    ELSE BEGIN
+        SET is_valid = 0
+    END
+END
