@@ -39,3 +39,98 @@ BEGIN
         LPF ~log#add_warning~ STR_VAR message = ~%value% : Invalid quantity~ END
     END
 END
+
+DEFINE_PATCH_FUNCTION ~tool#boolean~
+    INT_VAR
+        default = 0
+    STR_VAR
+        value = ~~
+    RET
+        boolean
+BEGIN
+    SET ~boolean~ = default
+
+    PATCH_IF IS_AN_INT value AND (value == 0 OR value == 1) BEGIN
+        SET ~boolean~ = value
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~tool#integer~
+    INT_VAR
+        default = 100
+    STR_VAR
+        value = ~~
+    RET
+        integer
+BEGIN
+    SET ~integer~ = default
+
+    PATCH_IF IS_AN_INT value AND value > 0 AND value <= 100 BEGIN
+        SET ~integer~ = value
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~tool#values~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        value = ~~
+    RET
+        count
+    RET_ARRAY
+        values
+BEGIN
+    CLEAR_ARRAY ~values~
+
+    PATCH_DEFINE_ARRAY ~values~ BEGIN END
+
+    SET ~count~ = 0
+    SET ~value_min~ = 0
+    SET ~value_max~ = 0
+
+    PATCH_IF ~%value%~ STRING_EQUAL ~-~ BEGIN END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
+        INNER_PATCH ~%value%~ BEGIN
+            REPLACE_EVALUATE ~\([0-9]+\)-\([0-9]+\)~ BEGIN
+                PATCH_IF MATCH1 > MATCH2 BEGIN
+                    SET value_min = MATCH2
+                    SET value_max = MATCH1
+                END
+                ELSE BEGIN
+                    SET value_min = MATCH1
+                    SET value_max = MATCH2
+                END
+            END ~~
+        END
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)\+$~ == 0 BEGIN
+        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~\+~ ~~ END
+        SET ~value_min~ = value
+        SET ~value_max~ = max
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-$~ == 0 BEGIN
+        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~-~ ~~ END
+        SET ~value_min~ = min
+        SET ~value_max~ = value
+    END
+    ELSE PATCH_IF IS_AN_INT value BEGIN
+        SET ~value_min~ = value
+        SET ~value_max~ = value
+    END
+
+    PATCH_IF min > value_min BEGIN
+        SET value_min = min
+    END
+
+    PATCH_IF max < value_max BEGIN
+        SET value_max = max
+    END
+
+    PATCH_IF value_min <= value_max OR (value_min == value_max AND value_min != 0) BEGIN
+        FOR (index = value_min; index <= value_max; ++index) BEGIN
+            SET $values(~%count%~) = index
+            SET count += 1
+        END
+    END
+END
