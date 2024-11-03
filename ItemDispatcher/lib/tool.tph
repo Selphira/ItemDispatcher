@@ -2,11 +2,9 @@ DEFINE_PATCH_FUNCTION ~tool#quantity~
     STR_VAR
         value = ~~
     RET
-        is_valid
         is_percent
         quantity
 BEGIN
-    SET is_valid = 1
     SET is_percent = 0
     SET quantity = 1
 
@@ -38,6 +36,6 @@ BEGIN
         END
     END
     ELSE BEGIN
-        SET is_valid = 0
+        LPF ~log#add_warning~ STR_VAR message = ~%value% : Invalid quantity~ END
     END
 END
