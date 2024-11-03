@@ -1,0 +1,79 @@
+DEFINE_PATCH_FUNCTION ~selector#item#get~
+    STR_VAR
+        target = ~~
+    RET
+        item
+BEGIN
+    SPRINT ~item~ ~~
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9]+\.itm$~ == 0 BEGIN
+        SPRINT ~item~ ~%target%~
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~selector#target#is_complex~
+    STR_VAR
+        target = ~~
+    RET
+        is_complex
+BEGIN
+    SET is_complex = 0
+
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~.*[&!].+~ == 0 BEGIN
+        SET is_complex = 1
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~selector#target#get~
+    INT_VAR
+        count = 0
+    STR_VAR
+        target = ~~
+    RET_ARRAY
+        targets
+BEGIN
+    // Une même cible ne peut pas être 2 fois dans la liste
+    // Si count >= au nombre de cibles dispo => ~target#get_all~
+    // sinon traitement normal
+
+    // TODO: Si l'objet est destiné à être équipé, sélectionner une cible valide
+    //       Le faire dans une autre fonction plus spécialisée
+    //       S'assurer d'avoir une cible qui peut la porter, qui a la compétence, qui n'a pas déjà été sélectionnée pour une répartition dans ce slot, etc.
+    // TODO: Gérer le cas où aucune cible valide n'est présente
+END
+
+DEFINE_PATCH_FUNCTION ~selector#target#get_bypercent~
+    INT_VAR
+        percent = 100
+    STR_VAR
+        target = ~~
+    RET_ARRAY
+        targets
+BEGIN
+    // Retourne un nombre de cible aléatoire égal à un pourcentage
+    // Si 100 : appèlera ~target#get_all~
+    // Sinon appèlera ~target#get_multiple~ avec le nombre de cible à fournir
+END
+
+DEFINE_PATCH_FUNCTION ~selector#target#get_by_range~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        target = ~~
+    RET_ARRAY
+        targets
+BEGIN
+    // Retourne un nombre de cible aléatoire contenu entre min et max
+    // déterminera un nombre aléatoire entre min et max
+    // Appèlera ~target#get_multiple~ avec le nombre de cible calculé
+END
+
+
+DEFINE_PATCH_FUNCTION ~selector#target#get_all~
+    STR_VAR
+        target = ~~
+    RET_ARRAY
+        targets
+BEGIN
+    // Retourne toutes les cibles
+END

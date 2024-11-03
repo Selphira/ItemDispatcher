@@ -80,20 +80,21 @@ BEGIN
         COPY ~.../inlined/blank~ ~%work_file_path%~
     END
     COPY ~%file%~ ~override~
-        READ_2DA_ENTRIES_NOW ~rows~ 10
-        FOR (row = 0; row < rows; ++row) BEGIN
-            READ_2DA_ENTRY_FORMER ~rows~ row 0 item
-            READ_2DA_ENTRY_FORMER ~rows~ row 1 target
-            READ_2DA_ENTRY_FORMER ~rows~ row 2 targetQuantity
-            READ_2DA_ENTRY_FORMER ~rows~ row 3 source
-            READ_2DA_ENTRY_FORMER ~rows~ row 4 itemQuantity
-            READ_2DA_ENTRY_FORMER ~rows~ row 5 chapter
-            READ_2DA_ENTRY_FORMER ~rows~ row 6 difficulty
-            READ_2DA_ENTRY_FORMER ~rows~ row 7 equipable
-            READ_2DA_ENTRY_FORMER ~rows~ row 8 stealable
-            READ_2DA_ENTRY_FORMER ~rows~ row 9 chance
+        READ_2DA_ENTRIES_NOW ~rows~ 11
+        FOR (row = 1; row < rows; ++row) BEGIN
+            READ_2DA_ENTRY_FORMER ~rows~ row  0 item_quantity
+            READ_2DA_ENTRY_FORMER ~rows~ row  1 item
+            READ_2DA_ENTRY_FORMER ~rows~ row  2 target_quantity
+            READ_2DA_ENTRY_FORMER ~rows~ row  3 target
+            READ_2DA_ENTRY_FORMER ~rows~ row  4 source
+            READ_2DA_ENTRY_FORMER ~rows~ row  5 chapter
+            READ_2DA_ENTRY_FORMER ~rows~ row  6 difficulty
+            READ_2DA_ENTRY_FORMER ~rows~ row  7 equipable
+            READ_2DA_ENTRY_FORMER ~rows~ row  8 stealable
+            READ_2DA_ENTRY_FORMER ~rows~ row  9 droppable
+            READ_2DA_ENTRY_FORMER ~rows~ row 10 chance
 
-            SPRINT ~line~ ~%item%%TAB%%target%%TAB%%targetQuantity%%TAB%%source%%TAB%%itemQuantity%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%chance%%TAB%%mod_name%~
+            SPRINT ~line~ ~%item_quantity%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%%TAB%%mod_name%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END
@@ -219,7 +220,7 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row 0 target
             READ_2DA_ENTRY_FORMER ~rows~ row 1 mod_name
 
-            LPF ~target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
+            LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
 
             PATCH_IF is_complex_target == 1 BEGIN
                 SPRINT ~target_type~ ~complex~
@@ -233,6 +234,9 @@ BEGIN
             WITH
                 ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
                 ~cre~   BEGIN LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END END
+                // ~cnt~ //TODO: les conteneurs => ar2600#2.cnt
+                // ~sto~ //TODO: les magasins   => ribald.sto
+                // ~are~ //TODO: les créatures, magasins et conteneurs de la carte => ae2600.are
                 ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~kit_%target_name%~       RET_ARRAY temporary_groups END END
                 ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~general_%target_name%~   RET_ARRAY temporary_groups END END
                 ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~race_%target_name%~      RET_ARRAY temporary_groups END END
