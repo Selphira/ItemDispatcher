@@ -134,3 +134,54 @@ BEGIN
         END
     END
 END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#string#explode~
+    STR_VAR
+        string = ~~
+        separator = ~ ~
+    RET_ARRAY
+        parts
+BEGIN
+    ACTION_DEFINE_ARRAY ~parts~ BEGIN END
+
+    OUTER_SPRINT ~list~ ~%string%~
+    OUTER_SET index = 0
+
+    OUTER_WHILE ~%list%~ STRING_COMPARE ~~ BEGIN
+        OUTER_PATCH_SAVE list "%list%" BEGIN
+            SET test = BUFFER_LENGTH
+
+            PATCH_IF BUFFER_LENGTH > 0 BEGIN
+                SET pointer = 0
+                SET found   = 0
+                WHILE !found BEGIN
+                    READ_ASCII pointer char (1)
+                    SET pointer += 1
+
+                    PATCH_IF ~%char%~ STRING_EQUAL ~%separator%~ BEGIN
+                        SET found = 1
+                    END
+
+                    PATCH_IF pointer == BUFFER_LENGTH BEGIN
+                        SET found = 1
+                        SET pointer += 1
+                    END
+                END
+
+                READ_ASCII 0x0 part (pointer - 1)
+                DELETE_BYTES 0x0 (pointer - 1)
+            END
+        END
+
+        ACTION_IF STRING_LENGTH ~%part%~ == 0 BEGIN
+            FAIL ~Invalid string : %string%~
+        END
+
+        OUTER_PATCH_SAVE list "%list%" BEGIN
+            REPLACE_TEXTUALLY "^%separator%\(.*\)$" "\1"
+        END
+
+        OUTER_SPRINT $parts(~%index%~) ~%part%~
+        OUTER_SET index += 1
+    END
+END
