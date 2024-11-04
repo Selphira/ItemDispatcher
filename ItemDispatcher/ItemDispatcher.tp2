@@ -11,10 +11,14 @@ ALWAYS
     <<<<<<<< .../inlined/blank
 >>>>>>>>
 
+    RANDOM_SEED ~now~
+
     INCLUDE ~%MOD_FOLDER%/lib/data.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/dispatch.tph~
     INCLUDE ~%MOD_FOLDER%/lib/lists.tph~
     INCLUDE ~%MOD_FOLDER%/lib/log.tph~
-    INCLUDE ~%MOD_FOLDER%/lib/target.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/selector.tph~
+    INCLUDE ~%MOD_FOLDER%/lib/tool.tph~
 END
 
 LANGUAGE ~Francais~ ~french~
@@ -26,22 +30,4 @@ LAF ~log#init~ END
 LAF ~lists#merge~ END // Récupération des listes présentes dans les autres mods
 LAM ~data#load~       // Création des tableaux basés sur les données du jeu
 LAM ~lists#load~      // Création des tableaux basés sur les listes
-//LAF ~dispatching~ END // Répartition des objets !
-
-/*
-COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
-END
-*/
-
-/*
-- Charger toutes les créatures, magasins, trésors aléatoires et conteneurs en mémoire
-  Créer divers tableaux pour les créatures qui vont permettre de les filtrer facilement
-  > Par exemple, un tableau par race, par classe, etc... ISSET($tableauClass(%class%)) => cible gardée !
-  Créer divers tableaux pour les créatures afin de savoir quels types d'équipement ils peuvent avoir
-
-
-Créer un groupe contenant toutes les créatures qui ne peuvent pas équiper d'objets
-  > Créer un groupe par slot !!
-  > Le groupe de toutes les créatures listera les groupes de chaque slot
-
-*/
+LAM ~dispatch#run~    // Répartition des objets !
