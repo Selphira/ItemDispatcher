@@ -2,40 +2,41 @@ DEFINE_ACTION_MACRO ~data#load~
 BEGIN
     LAM ~data#load#creatures~
     LAM ~data#load#items~
+    //LAM ~data#load#stores~
 END
 
 /*
  * Crée des tableaux pour chaque type de filtre supporté à partir des données des créatures du jeu.
  *
  * Tableau contenant le nombre de créatures correspondant au filtre
- * $foo(~bar~) = 2
+ * $group_count_cre_foo(~bar~) = 2
  *
  * Tableau contenant la liste des créatures correspondant au filtre
- * $~foo%bar%~(~0~) ~creature1~
- * $~foo%bar%~(~1~) ~creature2~
+ * $~group_cre_foo%bar%~(~0~) ~creature1~
+ * $~group_cre_foo%bar%~(~1~) ~creature2~
  */
 DEFINE_ACTION_MACRO ~data#load#creatures~
 BEGIN
-    LAF ~data#load#ids~ STR_VAR file = ~kit~ RET_ARRAY kits = array END
-    LAF ~data#load#ids~ STR_VAR file = ~general~ RET_ARRAY generals = array END
-    LAF ~data#load#ids~ STR_VAR file = ~race~ RET_ARRAY races = array END
-    LAF ~data#load#ids~ STR_VAR file = ~class~ RET_ARRAY classes = array END
-    LAF ~data#load#ids~ STR_VAR file = ~specific~ RET_ARRAY specifics = array END
-    LAF ~data#load#ids~ STR_VAR file = ~gender~ RET_ARRAY genders = array END
-    LAF ~data#load#ids~ STR_VAR file = ~alignmen~ RET_ARRAY alignments = array END
-    LAF ~data#load#levels~ RET_ARRAY levels END
+    LAF ~data#load#ids~ STR_VAR file = ~kit~ RET_ARRAY group_count_cre_kits = array END
+    LAF ~data#load#ids~ STR_VAR file = ~general~ RET_ARRAY group_count_cre_generals = array END
+    LAF ~data#load#ids~ STR_VAR file = ~race~ RET_ARRAY group_count_cre_races = array END
+    LAF ~data#load#ids~ STR_VAR file = ~class~ RET_ARRAY group_count_cre_classes = array END
+    LAF ~data#load#ids~ STR_VAR file = ~specific~ RET_ARRAY group_count_cre_specifics = array END
+    LAF ~data#load#ids~ STR_VAR file = ~gender~ RET_ARRAY group_count_cre_genders = array END
+    LAF ~data#load#ids~ STR_VAR file = ~alignmen~ RET_ARRAY group_count_cre_alignments = array END
+    LAF ~data#load#levels~ RET_ARRAY group_count_cre_levels END
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.cre$~ ~override~
 	    SPRINT ~creature~ ~%SOURCE_FILE%~
 
-		READ_BYTE  0x234 ~level~
-		READ_SHORT 0x246 ~kit~
-		READ_BYTE  0x271 ~general~
-		READ_BYTE  0x272 ~race~
-		READ_BYTE  0x273 ~class~
-		READ_BYTE  0x274 ~specific~
-		READ_BYTE  0x275 ~gender~
-		READ_BYTE  0x27b ~alignment~
+		READ_BYTE  0x234 level
+		READ_SHORT 0x246 kit
+		READ_BYTE  0x271 general
+		READ_BYTE  0x272 race
+		READ_BYTE  0x273 class
+		READ_BYTE  0x274 specific
+		READ_BYTE  0x275 gender
+		READ_BYTE  0x27b alignment
 
 		LOOKUP_IDS_SYMBOL_OF_INT kit_name ~kit~ kit
 		LOOKUP_IDS_SYMBOL_OF_INT general_name ~general~ general
@@ -54,91 +55,150 @@ BEGIN
 		TO_LOWER gender_name
 		TO_LOWER alignment_name
 
-		PATCH_IF NOT VARIABLE_IS_SET $kits(~%kit_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_kits(~%kit_name%~) BEGIN
 		    PATCH_IF kit != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
 		    END
 		    SPRINT ~kit_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $generals(~%general_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_generals(~%general_name%~) BEGIN
 		    PATCH_IF general != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
 		    END
 		    SPRINT ~general_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $races(~%race_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_races(~%race_name%~) BEGIN
 		    PATCH_IF race != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
 		    END
 		    SPRINT ~race_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $classes(~%class_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_classes(~%class_name%~) BEGIN
 		    PATCH_IF class != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
 		    END
 		    SPRINT ~class_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $specifics(~%specific_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_specifics(~%specific_name%~) BEGIN
 		    PATCH_IF specific != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
 		    END
 		    SPRINT ~specific_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $genders(~%gender_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_genders(~%gender_name%~) BEGIN
 		    PATCH_IF gender != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
 		    END
 		    SPRINT ~gender_name~ ~none~
 		END
 
-		PATCH_IF NOT VARIABLE_IS_SET $alignments(~%alignment_name%~) BEGIN
+		PATCH_IF NOT VARIABLE_IS_SET $group_count_cre_alignments(~%alignment_name%~) BEGIN
 		    PATCH_IF alignment != 0 BEGIN
 		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
 		    END
 		    SPRINT ~alignment_name~ ~none~
 		END
 
-        SET ~index~ = $kits(~%kit_name%~)
-        SET $kits(~%kit_name%~) += 1
-        SPRINT $~kit_%kit_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_kits(~%kit_name%~)
+        SET $group_count_cre_kits(~%kit_name%~) += 1
+        SPRINT $~group_cre_kit_%kit_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $generals(~%general_name%~)
-        SET $generals(~%general_name%~) += 1
-        SPRINT $~general_%general_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_generals(~%general_name%~)
+        SET $group_count_cre_generals(~%general_name%~) += 1
+        SPRINT $~group_cre_general_%general_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $races(~%race_name%~)
-        SET $races(~%race_name%~) += 1
-        SPRINT $~race_%race_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_races(~%race_name%~)
+        SET $group_count_cre_races(~%race_name%~) += 1
+        SPRINT $~group_cre_race_%race_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $classes(~%class_name%~)
-        SET $classes(~%class_name%~) += 1
-        SPRINT $~class_%class_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_classes(~%class_name%~)
+        SET $group_count_cre_classes(~%class_name%~) += 1
+        SPRINT $~group_cre_class_%class_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $specifics(~%specific_name%~)
-        SET $specifics(~%specific_name%~) += 1
-        SPRINT $~specific_%specific_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_specifics(~%specific_name%~)
+        SET $group_count_cre_specifics(~%specific_name%~) += 1
+        SPRINT $~group_cre_specific_%specific_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $genders(~%gender_name%~)
-        SET $genders(~%gender_name%~) += 1
-        SPRINT $~gender_%gender_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_genders(~%gender_name%~)
+        SET $group_count_cre_genders(~%gender_name%~) += 1
+        SPRINT $~group_cre_gender_%gender_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $alignments(~%alignment_name%~)
-        SET $alignments(~%alignment_name%~) += 1
-        SPRINT $~alignment_%alignment_name%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_alignments(~%alignment_name%~)
+        SET $group_count_cre_alignments(~%alignment_name%~) += 1
+        SPRINT $~group_cre_alignment_%alignment_name%~(~%index%~) ~%creature%~
 
-        SET ~index~ = $levels(~%level%~)
-        SET $levels(~%level%~) += 1
-        SPRINT $~level_%level%~(~%index%~) ~%creature%~
+        SET index = $group_count_cre_levels(~%level%~)
+        SET $group_count_cre_levels(~%level%~) += 1
+        SPRINT $~group_cre_level_%level%~(~%index%~) ~%creature%~
 	BUT_ONLY
 END
 
 DEFINE_ACTION_MACRO ~data#load#items~
 BEGIN
+    LAF ~data#load#ids~ STR_VAR file = ~itemcat~ RET_ARRAY group_count_itm_categories = array END
+    LAF ~data#load#armor_types~  RET_ARRAY group_count_itm_armor_types END
+    LAF ~data#load#enchantments~ RET_ARRAY group_count_itm_enchantments END
+
+    OUTER_SET group_count_itm_cursed     = 0
+    OUTER_SET group_count_itm_magical    = 0
+    OUTER_SET group_count_itm_two_handed = 0
+    OUTER_SET group_count_itm_weapons    = 0
+
+	COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
+	    SPRINT ~item~ ~%SOURCE_FILE%~
+
+		READ_LONG  0x18 flags
+		READ_SHORT 0x1c category
+		READ_ASCII 0x22 animation (2)
+		READ_ASCII 0x60 enchantment
+
+		LOOKUP_IDS_SYMBOL_OF_INT category_name ~itemcat~ category
+
+		LPF ~data#load#armor_type~ STR_VAR animation RET armor_type END
+        LPF ~data#load#is_weapon~ STR_VAR category RET is_weapon END
+
+        TO_LOWER category_name
+
+		SET twohanded = (flags BAND BIT1) != 0
+		SET cursed    = (flags BAND BIT4) != 0
+		SET magical   = (flags BAND BIT6) != 0
+
+        PATCH_IF NOT ~%armor_type%~ STRING_EQUAL ~~ BEGIN
+            SET ~index~ = $group_count_itm_armor_types(~%armor_type%~)
+            SET $group_count_itm_armor_types(~%armor_type%~) += 1
+            SPRINT $~group_itm_armor_type_%armor_type%~(~%index%~) ~%item%~
+        END
+
+        PATCH_IF VARIABLE_IS_SET $group_count_itm_categories(~%category_name%~) BEGIN
+            SET ~index~ = $group_count_itm_categories(~%category_name%~)
+            SET $group_count_itm_categories(~%category_name%~) += 1
+            SPRINT $~group_itm_category_%category_name%~(~%index%~) ~%item%~
+        END
+
+        PATCH_IF magical == 1 BEGIN
+            SPRINT $group_itm_magical(~%group_magical%~) ~%item%~
+            SET group_count_itm_magical += 1
+        END
+
+        PATCH_IF cursed == 1 BEGIN
+            SPRINT $group_itm_cursed(~%group_count_itm_cursed%~) ~%item%~
+            SET group_count_itm_cursed += 1
+        END
+
+        PATCH_IF is_weapon BEGIN
+            SPRINT $group_itm_weapon(~%group_weapons%~) ~%item%~
+            SET group_count_itm_weapons += 1
+            PATCH_IF twohanded == 1 BEGIN
+                SPRINT $group_itm_two_handed(~%group_two_handed%~) ~%item%~
+                SET group_count_itm_two_handed += 1
+            END
+        END
+	BUT_ONLY
 END
 
 DEFINE_ACTION_FUNCTION ~data#load#ids~
@@ -170,10 +230,70 @@ END
 
 DEFINE_ACTION_FUNCTION ~data#load#levels~
     RET_ARRAY
-        levels
+        group_count_cre_levels
 BEGIN
-    ACTION_DEFINE_ARRAY ~levels~ BEGIN END
+    ACTION_DEFINE_ARRAY ~group_count_cre_levels~ BEGIN END
     OUTER_FOR (level = 0; level < 50; ++level) BEGIN
-        OUTER_SET $levels(~%level%~) = 0
+        OUTER_SET $group_count_cre_levels(~%level%~) = 0
     END
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#armor_types~
+    RET_ARRAY
+        group_count_itm_armor_types
+BEGIN
+    ACTION_DEFINE_ASSOCIATIVE_ARRAY ~group_count_itm_armor_types~ BEGIN
+        ~robe~          => 0
+        ~leather~       => 0
+        ~chainmail~     => 0
+        ~platemail~     => 0
+        ~buckler~       => 0
+        ~small_shield~  => 0
+        ~medium_shield~ => 0
+        ~large_shield~  => 0
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#enchantments~
+    RET_ARRAY
+        group_count_itm_enchantments
+BEGIN
+    ACTION_DEFINE_ASSOCIATIVE_ARRAY ~group_count_itm_enchantments~ BEGIN
+        0 => 0
+        1 => 0
+        2 => 0
+        3 => 0
+        4 => 0
+        5 => 0
+        6 => 0
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~data#load#armor_type~
+    STR_VAR
+        animation = ~~
+    RET
+        armor_type
+BEGIN
+    PATCH_MATCH ~%animation%~
+    WITH
+        ~2W~ ~3W~ ~4W~ BEGIN SPRINT ~armor_type~ ~robe~ END
+        ~2A~   BEGIN SPRINT ~armor_type~ ~leather~ END
+        ~3A~   BEGIN SPRINT ~armor_type~ ~chainmail~ END
+        ~4A~   BEGIN SPRINT ~armor_type~ ~platemail~ END
+        ~D1~   BEGIN SPRINT ~armor_type~ ~buckler~ END
+        ~D2~   BEGIN SPRINT ~armor_type~ ~small_shield~ END
+        ~D3~   BEGIN SPRINT ~armor_type~ ~medium_shield~ END
+        ~D4~   BEGIN SPRINT ~armor_type~ ~large_shield~ END
+        DEFAULT SPRINT ~armor_type~ ~~
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~data#load#is_weapon~
+    INT_VAR
+        category = 0
+    RET
+        is_weapon
+BEGIN
+    SET is_weapon = (category >= 0xf AND category <= 0x1e)
 END
