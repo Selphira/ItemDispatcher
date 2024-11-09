@@ -272,14 +272,14 @@ BEGIN
             SET $group_count(~group_itm_cursed~) += 1
         END
 
-        PATCH_IF enchantment >= 0 AND enchantment >= 6 BEGIN
+        PATCH_IF enchantment >= 0 AND enchantment <= 6 BEGIN
             SET $~group_itm_enchantment_%enchantment%~(~%item%~) = 1
             SET $group_count(~group_itm_enchantment_%enchantment%~) += 1
         END
 
         PATCH_IF is_weapon AND twohanded == 1 BEGIN
             SET $group_itm_two_handed(~%item%~) = 1
-            SET $group_count(~$group_itm_two_handed~) += 1
+            SET $group_count(~group_itm_two_handed~) += 1
         END
 	BUT_ONLY
 END
