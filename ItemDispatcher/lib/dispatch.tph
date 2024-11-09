@@ -2,7 +2,9 @@ DEFINE_ACTION_MACRO ~dispatch#run~
 BEGIN
     COPY ~%workspace%/items.2da~ ~override~
         READ_2DA_ENTRIES_NOW ~rows~ 12
-        FOR (row = 1; row < rows; ++row) BEGIN
+        FOR (row = 0; row < rows; ++row) BEGIN
+            // TODO: TRY / CATCH pour chaque ligne, une erreur sur une ligne ne doit pas empêcher les autres de réussir
+
             READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
             READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item
             READ_2DA_ENTRY_FORMER ~rows~ row  2 row_target_quantity
@@ -28,14 +30,21 @@ BEGIN
             LPF ~tool#integer~ INT_VAR default = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
             LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
             LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
-            LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item END
+            LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
             LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ STR_VAR target = ~%row_target%~ item RET_ARRAY targets END
+
+            // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
+            // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
+            // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
 
             // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
             //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
             // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
             // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
             // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
+            //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
+
+            // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
 
             PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
                 LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END

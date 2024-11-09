@@ -2,12 +2,31 @@ DEFINE_PATCH_FUNCTION ~selector#item#get~
     STR_VAR
         target = ~~
     RET
+        is_random
         item
 BEGIN
+    SET is_random = 0
     SPRINT ~item~ ~~
+
     PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9]+\.itm$~ == 0 BEGIN
         SPRINT ~item~ ~%target%~
     END
+    ELSE BEGIN
+        LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
+        SET is_random = 1
+    END
+
+    // Ne pas sélectionner d'objet non droppable (il y a sans doute une raison à ça)
+
+
+    // ~tool#string#explode~
+
+    // TODO: Sélection d'objet complexe.
+    //   Ex: sword.wpn&cursed.gnd&3.lvl // épée +3 maudite
+    //   Ex: plat.arm&!cursed.gnd&3.lvl // armure de plate +3 non maudite
+    //   Ex: leather.arm&!cursed.gnd&3-.lvl // armure de cuir non maudite normale, +1, +2 ou +3
+    //   Ex: mail.arm&!magic.gnd // armure de maille non magique
+    //   Ex: amulet.cat // Une amulette (catégorie d'objet)
 END
 
 DEFINE_PATCH_FUNCTION ~selector#target#is_complex~
@@ -26,15 +45,129 @@ END
 DEFINE_PATCH_FUNCTION ~selector#target#get~
     INT_VAR
         count = 0
+        count_is_percent = 0
     STR_VAR
         target = ~~
+        item = ~~
+    RET
+        is_random
     RET_ARRAY
         targets
 BEGIN
-    // Une même cible ne peut pas être 2 fois dans la liste
-    // Si count >= au nombre de cibles dispo => ~target#get_all~
-    // sinon traitement normal
+    SET is_random = 0
+    SET count_targets = 0
+    SET count_cre_targets = 0
+    SET count_sto_targets = 0
+    SET count_cnt_targets = 0
 
+    CLEAR_ARRAY targets
+    CLEAR_ARRAY cre_targets
+    CLEAR_ARRAY sto_targets
+    CLEAR_ARRAY cnt_targets
+
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-zA-Z0-9]+\.cre$~ == 0 BEGIN
+        SPRINT $targets(1) ~%target%~
+        SET count_targets = 1
+    END
+    ELSE BEGIN
+        // Préremplissage des tableaux contenant les cibles potentielles
+        LPF ~tool#array#clone~ STR_VAR array = ~group_cre_all~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+        LPF ~tool#array#clone~ STR_VAR array = ~group_sto_all~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+        LPF ~tool#array#clone~ STR_VAR array = ~group_cnt_all~ RET count_sto_targets = count RET_ARRAY cnt_targets = new_array END
+
+        LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
+
+        PATCH_PHP_EACH parts AS index => part BEGIN
+            SET $group_count(~group_temporary~) = 0
+            CLEAR_ARRAY group_temporary
+
+            LPF ~selector#target#determine_group~ STR_VAR part RET is_negative group_name group_type RET_ARRAY group_count group_temporary END
+
+            // On s'assure que le groupe désiré existe
+            PATCH_IF NOT VARIABLE_IS_SET $group_count(~%group_name%~) BEGIN
+                PATCH_FAIL ~%target% : Invalid group (%group_name%)~
+            END
+
+            SPRINT target_group_category ~~
+
+            PATCH_IF VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
+                SPRINT target_group_category $target_group_categories(~%group_type%~)
+            END
+            ELSE BEGIN
+                PATCH_FAIL ~%target% : Invalid group type (%group_type%)~
+            END
+
+            SET group_count_selected = $group_count(~%group_name%~)
+
+            PATCH_MATCH ~%target_group_category%~
+            WITH
+                ~cre~ BEGIN
+                    SET count_sto_targets = 0
+                    SET count_cnt_targets = 0
+
+                    CLEAR_ARRAY sto_targets
+                    CLEAR_ARRAY cnt_targets
+
+                    PATCH_IF is_negative == 0 BEGIN
+                        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    END
+                END
+                ~sto~ BEGIN
+                    SET count_cre_targets = 0
+                    SET count_cnt_targets = 0
+
+                    CLEAR_ARRAY cre_targets
+                    CLEAR_ARRAY cnt_targets
+
+                    PATCH_IF is_negative == 0 BEGIN
+                        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+                    END
+                END
+                ~cnt~ BEGIN
+                    SET count_cre_targets = 0
+                    SET count_sto_targets = 0
+
+                    CLEAR_ARRAY cre_targets
+                    CLEAR_ARRAY sto_targets
+
+                    PATCH_IF is_negative == 0 BEGIN
+                        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+                    END
+                END
+                DEFAULT
+                    PATCH_IF is_negative == 0 BEGIN
+                        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+                        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+                        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+                    END
+            END
+
+            //TODO: Tout rassembler en un seul tableau
+            //TODO: Effectuer la sélection aléatoire
+            SET countGroup = $group_count(~%group_name%~)
+            PATCH_PRINT ~Cibles potentielles apres %part% (%group_name% (%countGroup%)) : %count_cre_targets% (cre) - %count_sto_targets% (sto) - %count_cnt_targets% (cnt)~
+        END
+    END
+        // Une même cible ne peut pas être 2 fois dans la liste des cibles sélectionnées
+        // Si count >= au nombre de cibles dispo => ~target#get_all~
+        // sinon traitement normal
+        //
+    // TODO: Compter le nombre de cibles valides
+    // TODO: Si <= que le nombre désiré, toutes les retourner
     // TODO: Si l'objet est destiné à être équipé, sélectionner une cible valide
     //       Le faire dans une autre fonction plus spécialisée
     //       S'assurer d'avoir une cible qui peut la porter, qui a la compétence, qui n'a pas déjà été sélectionnée pour une répartition dans ce slot, etc.
@@ -76,4 +209,117 @@ DEFINE_PATCH_FUNCTION ~selector#target#get_all~
         targets
 BEGIN
     // Retourne toutes les cibles
+END
+
+
+DEFINE_PATCH_FUNCTION ~selector#target#parse_part~
+    STR_VAR
+        part = ~~
+    RET
+        is_negative
+        group_name
+        group_type
+BEGIN
+    INNER_PATCH ~%part%~ BEGIN
+        REPLACE_EVALUATE ~\(!?\)\(.+\)~ BEGIN
+            SET is_negative = ~%MATCH1%~ STRING_EQUAL ~!~ ? 1 : 0
+            SPRINT group ~%MATCH2%~
+        END ~~
+    END
+    INNER_PATCH ~%group%~ BEGIN
+        REPLACE_EVALUATE ~\(.+\)\.\(.+\)~ BEGIN
+            SPRINT group_name ~%MATCH1%~
+            SPRINT group_type ~%MATCH2%~
+        END ~~
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~selector#target#determine_group~
+    STR_VAR
+        part = ~~
+    RET
+        is_negative
+        group_name
+        group_type
+    RET_ARRAY
+        group_count
+        group_temporary
+BEGIN
+    LPF ~selector#target#parse_part~ STR_VAR part RET is_negative group_name group_type END
+
+    PATCH_IF (~%group_type%~ STRING_EQUAL ~cre~ OR ~%group_type%~ STRING_EQUAL ~sto~) BEGIN
+        PATCH_IF NOT ~%group_name%~ STRING_EQUAL ~?~ BEGIN
+            PATCH_IF is_negative == 0 AND NOT FILE_EXISTS_IN_GAME ~%group_name%.%group_type%~ BEGIN
+                PATCH_FAIL ~%target% : Target %group_name%.%group_type% not exist~
+            END
+            SET $group_temporary(~%group_name%.%group_type%~) = 1
+            SET $group_count(~group_temporary~) = 1
+            SPRINT group_name ~group_temporary~
+            SPRINT group_type ~grp~
+        END
+        ELSE BEGIN
+            SPRINT group_name ~group_%group_type%_all~
+        END
+    END
+    ELSE BEGIN
+        PATCH_MATCH ~%group_type%~
+        WITH
+            ~cls~ BEGIN SPRINT group_name ~group_cre_class_%group_name%~ END
+            ~gen~ BEGIN SPRINT group_name ~group_cre_general_%group_name%~ END
+            ~gnd~ BEGIN SPRINT group_name ~group_cre_gender_%group_name%~ END
+            ~kit~ BEGIN SPRINT group_name ~group_cre_kit_%group_name%~ END
+            ~rce~ BEGIN SPRINT group_name ~group_cre_race_%group_name%~ END
+            ~spc~ BEGIN SPRINT group_name ~group_cre_specific_%group_name%~ END
+            ~alg~ BEGIN SPRINT group_name ~group_cre_alignment_%group_name%~ END
+            ~lvl~ BEGIN
+                PATCH_IF IS_AN_INT group_name BEGIN
+                    SPRINT group_name ~group_cre_level_%group_name%~
+                END
+                ELSE BEGIN
+                    LPF ~tool#range~ INT_VAR min = 1 max = 50 STR_VAR value = ~%group_name%~ RET min max END
+                    FOR (level = min; level <= max; ++level) BEGIN
+                        PATCH_PHP_EACH ~group_cre_level_%level%~ AS creature => _ BEGIN
+                            SET $group_temporary(~%creature%~) = 1
+                            SET $group_count(~group_temporary~) += 1
+                        END
+                    END
+                    SPRINT group_name ~group_temporary~
+                    SPRINT group_type ~grp~
+                END
+            END
+
+            ~2hd~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
+            ~arm~ BEGIN SPRINT group_name ~group_itm_armor_type_%group_name%~ END
+            ~cat~ BEGIN SPRINT group_name ~group_itm_category_%group_name%~ END
+            ~ilv~ BEGIN
+                PATCH_IF IS_AN_INT group_name BEGIN
+                    SPRINT group_name ~group_itm_enchantment_%group_name%~
+                END
+                ELSE BEGIN
+                    LPF ~tool#range~ INT_VAR min = 0 max = 6 STR_VAR value = ~%group_name%~ RET min max END
+                    FOR (level = min; level <= max; ++level) BEGIN
+                        PATCH_PHP_EACH ~group_itm_enchantment_%level%~ AS creature => _ BEGIN
+                            SET $group_temporary(~%creature%~) = 1
+                            SET $group_count(~group_temporary~) += 1
+                        END
+                    END
+                    SPRINT group_name ~group_temporary~
+                    SPRINT group_type ~grp~
+                END
+            END
+
+            ~mgr~ BEGIN
+                PATCH_MATCH ~%group_name%~
+                WITH
+                    ~cursed~ BEGIN SPRINT group_name ~group_itm_cursed~ END
+                    ~magical~ BEGIN SPRINT group_name ~group_itm_magical~ END
+                    ~two_handed~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
+                    DEFAULT
+                END
+            END
+
+            ~grp~ BEGIN SPRINT group_name ~group_%group_name%~ END
+            DEFAULT
+        END
+    END
 END

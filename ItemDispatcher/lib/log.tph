@@ -11,14 +11,14 @@ DEFINE_DIMORPHIC_FUNCTION log#add
         message = ~~
 BEGIN
     SILENT
-	APPEND_OUTER ~%workspace%/log/%file%.log~ ~%message%~
+	APPEND_OUTER ~%workspace%/log/%file%.log~ ~%message%~ KEEP_CRLF
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_error
     STR_VAR
         message = ~~
 BEGIN
-    PRINT ~ERROR: %message%~
+    //PRINT ~ERROR: %message%~
     LAF ~log#add~ STR_VAR message file = ~errors~ END
 END
 
@@ -26,7 +26,7 @@ DEFINE_DIMORPHIC_FUNCTION log#add_warning
     STR_VAR
         message = ~~
 BEGIN
-    PRINT ~WARNING: %message%~
+    //PRINT ~WARNING: %message%~
     LAF ~log#add~ STR_VAR message file = ~warnings~ END
 END
 
