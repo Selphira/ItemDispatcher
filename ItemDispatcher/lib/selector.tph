@@ -88,73 +88,20 @@ BEGIN
                 PATCH_FAIL ~%target% : Invalid group (%group_name%)~
             END
 
-            SPRINT target_group_category ~~
-
-            PATCH_IF VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
-                SPRINT target_group_category $target_group_categories(~%group_type%~)
-            END
-            ELSE BEGIN
+            PATCH_IF NOT VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
                 PATCH_FAIL ~%target% : Invalid group type (%group_type%)~
             END
+
+            SPRINT target_group_category $target_group_categories(~%group_type%~)
 
             SET group_count_selected = $group_count(~%group_name%~)
 
             PATCH_MATCH ~%target_group_category%~
             WITH
-                ~cre~ BEGIN
-                    SET count_sto_targets = 0
-                    SET count_cnt_targets = 0
-
-                    CLEAR_ARRAY sto_targets
-                    CLEAR_ARRAY cnt_targets
-
-                    PATCH_IF is_negative == 0 BEGIN
-                        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
-                    END
-                    ELSE BEGIN
-                        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
-                    END
-                END
-                ~sto~ BEGIN
-                    SET count_cre_targets = 0
-                    SET count_cnt_targets = 0
-
-                    CLEAR_ARRAY cre_targets
-                    CLEAR_ARRAY cnt_targets
-
-                    PATCH_IF is_negative == 0 BEGIN
-                        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
-                    END
-                    ELSE BEGIN
-                        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
-                    END
-                END
-                ~cnt~ BEGIN
-                    SET count_cre_targets = 0
-                    SET count_sto_targets = 0
-
-                    CLEAR_ARRAY cre_targets
-                    CLEAR_ARRAY sto_targets
-
-                    PATCH_IF is_negative == 0 BEGIN
-                        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
-                    END
-                    ELSE BEGIN
-                        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
-                    END
-                END
-                DEFAULT
-                    PATCH_IF is_negative == 0 BEGIN
-                        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
-                        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
-                        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
-                    END
-                    ELSE BEGIN
-                        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
-                        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
-                        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
-                    END
-            END
+                ~cre~ BEGIN LPM ~selector#target#filter_cre~ END
+                ~sto~ BEGIN LPM ~selector#target#filter_sto~ END
+                ~cnt~ BEGIN LPM ~selector#target#filter_cnt~ END
+                DEFAULT     LPM ~selector#target#filter_all~ END
 
             //TODO: Tout rassembler en un seul tableau
             //TODO: Effectuer la sélection aléatoire
@@ -211,6 +158,67 @@ BEGIN
     // Retourne toutes les cibles
 END
 
+DEFINE_PATCH_MACRO ~selector#target#filter_cre~
+BEGIN
+    SET count_sto_targets = 0
+    SET count_cnt_targets = 0
+
+    CLEAR_ARRAY sto_targets
+    CLEAR_ARRAY cnt_targets
+
+    PATCH_IF is_negative == 0 BEGIN
+        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+    END
+    ELSE BEGIN
+        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+    END
+END
+
+DEFINE_PATCH_MACRO ~selector#target#filter_sto~
+BEGIN
+    SET count_cre_targets = 0
+    SET count_cnt_targets = 0
+
+    CLEAR_ARRAY cre_targets
+    CLEAR_ARRAY cnt_targets
+
+    PATCH_IF is_negative == 0 BEGIN
+        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+    END
+    ELSE BEGIN
+        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+    END
+END
+
+DEFINE_PATCH_MACRO ~selector#target#filter_cnt~
+BEGIN
+    SET count_cre_targets = 0
+    SET count_sto_targets = 0
+
+    CLEAR_ARRAY cre_targets
+    CLEAR_ARRAY sto_targets
+
+    PATCH_IF is_negative == 0 BEGIN
+        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+    END
+    ELSE BEGIN
+        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+    END
+END
+
+DEFINE_PATCH_MACRO ~selector#target#filter_all~
+BEGIN
+    PATCH_IF is_negative == 0 BEGIN
+        LPF ~tool#array#intersect~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+        LPF ~tool#array#intersect~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+        LPF ~tool#array#intersect~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+    END
+    ELSE BEGIN
+        LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~%group_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+        LPF ~tool#array#diff~ STR_VAR array = ~sto_targets~ array2 = ~%group_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
+        LPF ~tool#array#diff~ STR_VAR array = ~cnt_targets~ array2 = ~%group_name%~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
+    END
+END
 
 DEFINE_PATCH_FUNCTION ~selector#target#parse_part~
     STR_VAR
