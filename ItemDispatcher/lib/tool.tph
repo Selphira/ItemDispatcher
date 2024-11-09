@@ -40,6 +40,50 @@ BEGIN
     END
 END
 
+DEFINE_PATCH_FUNCTION ~tool#range~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        value = ~~
+    RET
+        min
+        max
+BEGIN
+    SET is_percent = 0
+    SET quantity = 1
+
+    PATCH_IF IS_AN_INT value AND value > 0 BEGIN
+        SET min = value > min ? value : min
+        SET max = value < max ? value : max
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)\+$~ == 0 BEGIN
+        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~\+~ ~~ END
+        SET min = value > min ? value : min
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-$~ == 0 BEGIN
+        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~-~ ~~ END
+        SET max = value < max ? value : max
+    END
+    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
+        INNER_PATCH ~%value%~ BEGIN
+            REPLACE_EVALUATE ~\([0-9]+\)-\([0-9]+\)~ BEGIN
+                PATCH_IF MATCH1 > MATCH2 BEGIN
+                    SET min = MATCH2 > min ? MATCH2 : min
+                    SET max = MATCH1 < max ? MATCH1 : max
+                END
+                ELSE BEGIN
+                    SET min = MATCH1 > min ? MATCH1 : min
+                    SET max = MATCH2 < max ? MATCH2 : max
+                END
+            END ~~
+        END
+    END
+    ELSE BEGIN
+        PATCH_FAIL ~Invalid range (%value%)~
+    END
+END
+
 DEFINE_PATCH_FUNCTION ~tool#boolean~
     INT_VAR
         default = 0
@@ -183,5 +227,61 @@ BEGIN
 
         OUTER_SPRINT $parts(~%index%~) ~%part%~
         OUTER_SET index += 1
+    END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#clone~
+    STR_VAR
+        array = ~~
+    RET
+        count
+    RET_ARRAY
+        new_array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY new_array
+    ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
+        OUTER_SPRINT $new_array(~%key%~) ~%value%~
+        OUTER_SET count += 1
+    END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#intersect~
+    STR_VAR
+        array = ~~
+        array2 = ~~
+    RET
+        count
+    RET_ARRAY
+        new_array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY new_array
+
+    ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
+        ACTION_IF VARIABLE_IS_SET $~%array2%~(~%key%~) BEGIN
+            OUTER_SPRINT $new_array(~%key%~) ~%value%~
+            OUTER_SET count += 1
+        END
+    END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#diff~
+    STR_VAR
+        array = ~~
+        array2 = ~~
+    RET
+        count
+    RET_ARRAY
+        new_array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY new_array
+
+    ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
+        ACTION_IF NOT VARIABLE_IS_SET $~%array2%~(~%key%~) BEGIN
+            OUTER_SPRINT $new_array(~%key%~) ~%value%~
+            OUTER_SET count += 1
+        END
     END
 END
