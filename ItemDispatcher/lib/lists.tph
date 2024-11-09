@@ -94,7 +94,7 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row  9 droppable
             READ_2DA_ENTRY_FORMER ~rows~ row 10 chance
 
-            SPRINT ~line~ ~%item_quantity%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%%TAB%%mod_name%~
+            SPRINT ~line~ ~%item_quantity%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END
@@ -113,7 +113,7 @@ BEGIN
         FOR (row = 0; row < rows; ++row) BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row 0 target
 
-            SPRINT ~line~ ~%target%%TAB%%mod_name%~
+            SPRINT ~line~ ~%target%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END
@@ -155,7 +155,7 @@ BEGIN
         REPLACE_TEXTUALLY ~\?~ ~\\?~
         REPLACE_TEXTUALLY ~\*~ ~\\*~
     END
-    APPEND_OUTER ~%work_file_path%~ ~%line%~ UNLESS ~^%unless%~
+    APPEND_OUTER ~%work_file_path%~ ~%line%%TAB%%mod_name%~ UNLESS ~^%unless%~ KEEP_CRLF
 END
 
 DEFINE_ACTION_MACRO ~lists#load~
@@ -197,8 +197,8 @@ BEGIN
 	    LPF ~lists#load#group~ STR_VAR group_name = ~%SOURCE_RES%~ RET_ARRAY temporary_groups END
 
 	    SET count = 0
-        PATCH_PHP_EACH ~temporary_groups~ AS group => value BEGIN
-            SPRINT $~group_%SOURCE_RES%~(~%count%~) ~%group_0%~
+        PATCH_PHP_EACH ~temporary_groups~ AS target => _ BEGIN
+            SPRINT $~group_%SOURCE_RES%~(~%target%~) ~%count%~
 	        SET count += 1
         END
         SET $groups(~%SOURCE_RES%~) = count
