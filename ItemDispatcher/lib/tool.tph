@@ -285,3 +285,30 @@ BEGIN
         END
     END
 END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#get_random~
+    INT_VAR
+        array_count = 0
+        number_to_select = 0
+    STR_VAR
+        array = ~~
+    RET
+        count_selected
+    RET_ARRAY
+        selected_array
+BEGIN
+    ACTION_CLEAR_ARRAY selected_array
+
+    ACTION_IF array_count <= number_to_select BEGIN
+        LAF ~tool#array#clone~ STR_VAR array RET count_selected = count RET_ARRAY selected_array = new_array END
+    END
+    ELSE BEGIN
+        OUTER_SET count_selected = number_to_select
+        OUTER_FOR (index = 0; index < number_to_select; ++index) BEGIN
+            OUTER_SET selected = RANDOM(1 array_count)
+            OUTER_SPRINT $selected_array(~%index%~) $~%array%~(~%selected%~)
+            OUTER_SPRINT $~%array%~(~%selected%~) $~%array%~(~%array_count%~)
+            OUTER_SET array_count -= 1
+        END
+    END
+END
