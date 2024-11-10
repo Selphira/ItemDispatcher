@@ -155,7 +155,7 @@ BEGIN
         REPLACE_TEXTUALLY ~\?~ ~\\?~
         REPLACE_TEXTUALLY ~\*~ ~\\*~
     END
-    APPEND_OUTER ~%work_file_path%~ ~%line%%TAB%%mod_name%~ UNLESS ~^%unless%~ KEEP_CRLF
+    APPEND_OUTER ~%work_file_path%~ ~%line%%TAB%%mod_name%~ UNLESS ~^%unless%%TAB%~ KEEP_CRLF
 END
 
 DEFINE_ACTION_MACRO ~lists#load~
@@ -190,6 +190,7 @@ BEGIN
 	COPY "%workspace%/groups" "override"
 	    CLEAR_ARRAY ~visited_groups~
 	    CLEAR_ARRAY ~temporary_groups~
+	    CLEAR_ARRAY ~group_%SOURCE_RES%~
 
         PATCH_DEFINE_ARRAY ~visited_groups~ BEGIN END
         PATCH_DEFINE_ARRAY ~temporary_groups~ BEGIN END
@@ -198,10 +199,11 @@ BEGIN
 
 	    SET count = 0
         PATCH_PHP_EACH ~temporary_groups~ AS target => _ BEGIN
-            SPRINT $~group_%SOURCE_RES%~(~%target%~) ~%count%~
+            SET $~group_%SOURCE_RES%~(~%target%~) = 1
 	        SET count += 1
         END
         SET $groups(~%SOURCE_RES%~) = count
+        PATCH_PRINT "Groupe : %SOURCE_RES% : %count%"
 	BUT_ONLY
 END
 
@@ -232,19 +234,54 @@ BEGIN
 
             PATCH_MATCH ~%target_type%~
             WITH
-                ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
+                // Groupes de créatures
                 ~cre~   BEGIN LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END END
                 // ~cnt~ //TODO: les conteneurs => ar2600#2.cnt
                 // ~sto~ //TODO: les magasins   => ribald.sto
                 // ~are~ //TODO: les créatures, magasins et conteneurs de la carte => ae2600.are
-                ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~kit_%target_name%~       RET_ARRAY temporary_groups END END
-                ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~general_%target_name%~   RET_ARRAY temporary_groups END END
-                ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~race_%target_name%~      RET_ARRAY temporary_groups END END
-                ~cls~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~class_%target_name%~     RET_ARRAY temporary_groups END END
-                ~spc~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~special_%target_name%~   RET_ARRAY temporary_groups END END
-                ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~gender_%target_name%~    RET_ARRAY temporary_groups END END
-                ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~alignment_%target_name%~ RET_ARRAY temporary_groups END END
-                ~lvl~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~level_%target_name%~     RET_ARRAY temporary_groups END END
+                ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_kit_%target_name%~       RET_ARRAY temporary_groups END END
+                ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_general_%target_name%~   RET_ARRAY temporary_groups END END
+                ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_race_%target_name%~      RET_ARRAY temporary_groups END END
+                ~cls~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_class_%target_name%~     RET_ARRAY temporary_groups END END
+                ~spc~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_special_%target_name%~   RET_ARRAY temporary_groups END END
+                ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_gender_%target_name%~    RET_ARRAY temporary_groups END END
+                ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_alignment_%target_name%~ RET_ARRAY temporary_groups END END
+                ~lvl~   BEGIN
+                    PATCH_IF IS_AN_INT target_name BEGIN
+                        LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_level_%target_name%~ RET_ARRAY temporary_groups END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#range~ INT_VAR min = 1 max = 50 STR_VAR value = ~%target_name%~ RET min max END
+                        FOR (level = min; level <= max; ++level) BEGIN
+                            LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_level_%level%~ RET_ARRAY temporary_groups END
+                        END
+                    END
+                END
+                // Groupes d'objets
+                ~ilv~   BEGIN
+                    PATCH_IF IS_AN_INT target_name BEGIN
+                        LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_enchantment_%target_name%~ RET_ARRAY temporary_groups END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#range~ INT_VAR min = 0 max = 6 STR_VAR value = ~%target_name%~ RET min max END
+                        FOR (level = min; level <= max; ++level) BEGIN
+                            LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_enchantment_%level%~ RET_ARRAY temporary_groups END
+                        END
+                    END
+                END
+                ~arm~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_armor_type_%target_name%~     RET_ARRAY temporary_groups END END
+                ~cat~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_category_%target_name%~     RET_ARRAY temporary_groups END END
+                ~mgr~   BEGIN
+                    PATCH_MATCH ~%target_name%~
+                    WITH
+                        ~cursed~     BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_cursed~     RET_ARRAY temporary_groups END END
+                        ~magical~    BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_magical~    RET_ARRAY temporary_groups END END
+                        ~two_handed~ BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_two_handed~ RET_ARRAY temporary_groups END END
+                        DEFAULT LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
+                    END
+                END
+                // Groupes génériques et complexes
+                ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
                 ~complex~ BEGIN LPF ~log#add_error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
                 DEFAULT LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
             END
@@ -296,7 +333,7 @@ DEFINE_PATCH_FUNCTION ~lists#load#group.basic~
     RET_ARRAY
         temporary_groups
 BEGIN
-    PATCH_PHP_EACH ~%group%~ AS _ => creature BEGIN
+    PATCH_PHP_EACH ~%group%~ AS creature => _ BEGIN
         SET $temporary_groups(~%creature%~) = 1
     END
 END
