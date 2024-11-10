@@ -3,60 +3,62 @@ BEGIN
     COPY ~%workspace%/items.2da~ ~override~
         READ_2DA_ENTRIES_NOW ~rows~ 12
         FOR (row = 0; row < rows; ++row) BEGIN
-            // TODO: TRY / CATCH pour chaque ligne, une erreur sur une ligne ne doit pas empêcher les autres de réussir
+            PATCH_TRY
+                READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
+                READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item
+                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_target_quantity
+                READ_2DA_ENTRY_FORMER ~rows~ row  3 row_target
+                READ_2DA_ENTRY_FORMER ~rows~ row  4 row_source
+                READ_2DA_ENTRY_FORMER ~rows~ row  5 row_chapter
+                READ_2DA_ENTRY_FORMER ~rows~ row  6 row_difficulty
+                READ_2DA_ENTRY_FORMER ~rows~ row  7 row_equipable
+                READ_2DA_ENTRY_FORMER ~rows~ row  8 row_stealable
+                READ_2DA_ENTRY_FORMER ~rows~ row  9 row_droppable
+                READ_2DA_ENTRY_FORMER ~rows~ row 10 row_chance
+                READ_2DA_ENTRY_FORMER ~rows~ row 11 mod_name
 
-            READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
-            READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item
-            READ_2DA_ENTRY_FORMER ~rows~ row  2 row_target_quantity
-            READ_2DA_ENTRY_FORMER ~rows~ row  3 row_target
-            READ_2DA_ENTRY_FORMER ~rows~ row  4 row_source
-            READ_2DA_ENTRY_FORMER ~rows~ row  5 row_chapter
-            READ_2DA_ENTRY_FORMER ~rows~ row  6 row_difficulty
-            READ_2DA_ENTRY_FORMER ~rows~ row  7 row_equipable
-            READ_2DA_ENTRY_FORMER ~rows~ row  8 row_stealable
-            READ_2DA_ENTRY_FORMER ~rows~ row  9 row_droppable
-            READ_2DA_ENTRY_FORMER ~rows~ row 10 row_chance
-            READ_2DA_ENTRY_FORMER ~rows~ row 11 mod_name
+                CLEAR_ARRAY chapters
+                CLEAR_ARRAY difficulties
+                CLEAR_ARRAY targets
 
-            CLEAR_ARRAY chapters
-            CLEAR_ARRAY difficulties
-            CLEAR_ARRAY targets
+                LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
+                LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
+                LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
+                LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
+                LPF ~tool#boolean~ INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
+                LPF ~tool#integer~ INT_VAR default = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
+                LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
+                LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
+                LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
+                LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ STR_VAR target = ~%row_target%~ item RET_ARRAY targets END
 
-            LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
-            LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
-            LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
-            LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
-            LPF ~tool#boolean~ INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
-            LPF ~tool#integer~ INT_VAR default = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
-            LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
-            LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
-            LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
-            LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ STR_VAR target = ~%row_target%~ item RET_ARRAY targets END
+                // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
+                // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
+                // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
 
-            // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
-            // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
-            // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
+                // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
+                //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
+                // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
+                // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
+                // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
+                //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
 
-            // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
-            //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
-            // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
-            // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
-            // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
-            //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
+                // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
 
-            // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
-
-            PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
-                LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
-            END
-            ELSE BEGIN
-                PATCH_PHP_EACH targets AS _ => target BEGIN
-                    PATCH_PRINT "Dispatching de %item% vers %target%"
+                PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
+                    LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
                 END
-                LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
-                // TODO: Placer toutes les distributions validées dans des tableaux
-                // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
-                // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+                ELSE BEGIN
+                    PATCH_PHP_EACH targets AS _ => target BEGIN
+                        PATCH_PRINT "Dispatching de %item% vers %target%"
+                    END
+                    LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
+                    // TODO: Placer toutes les distributions validées dans des tableaux
+                    // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
+                    // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+                END
+            WITH
+                DEFAULT LPF ~log#add_error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
             END
         END
     BUT_ONLY
