@@ -41,13 +41,14 @@ END
  */
 DEFINE_ACTION_MACRO ~data#load#creatures~
 BEGIN
-    LAF ~data#load#ids~ STR_VAR file = ~kit~      group = ~cre_kit~       RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~general~  group = ~cre_general~   RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~race~     group = ~cre_race~      RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~class~    group = ~cre_class~     RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~specific~ group = ~cre_specific~  RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~gender~   group = ~cre_gender~    RET_ARRAY group_count END
-    LAF ~data#load#ids~ STR_VAR file = ~alignmen~ group = ~cre_alignment~ RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~kit~      group = ~cre_kit~         RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~general~  group = ~cre_general~     RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~race~     group = ~cre_race~        RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~class~    group = ~cre_class~       RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~specific~ group = ~cre_specific~    RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~gender~   group = ~cre_gender~      RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~alignmen~ group = ~cre_alignment~   RET_ARRAY group_count END
+    LAF ~data#load#ids~ STR_VAR file = ~wprof~    group = ~cre_proficiency~ RET_ARRAY group_count END
     LAF ~data#load#levels~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_cre_all~) = 0
@@ -55,153 +56,186 @@ BEGIN
 	COPY_EXISTING_REGEXP GLOB ~^.+\.cre$~ ~override~
 	    SPRINT ~creature~ ~%SOURCE_FILE%~
 
-		READ_BYTE  0x234 level
-		READ_SHORT 0x246 kit
-		READ_BYTE  0x271 general
-		READ_BYTE  0x272 race
-		READ_BYTE  0x273 class
-		READ_BYTE  0x274 specific
-		READ_BYTE  0x275 gender
-		READ_BYTE  0x27b alignment
-		READ_LONG  0x2b8 slot_offset
-		READ_LONG  0x2bc item_offset
-		READ_LONG  0x2c0 item_count
+        LPM ~data#load#creatures#data~
+        LPM ~data#load#creatures#slots~
+        LPM ~data#load#creatures#proficiencies~
+	BUT_ONLY
+END
 
-		LOOKUP_IDS_SYMBOL_OF_INT kit_name ~kit~ kit
-		LOOKUP_IDS_SYMBOL_OF_INT general_name ~general~ general
-		LOOKUP_IDS_SYMBOL_OF_INT race_name ~race~ race
-		LOOKUP_IDS_SYMBOL_OF_INT class_name ~class~ class
-		LOOKUP_IDS_SYMBOL_OF_INT specific_name ~specific~ specific
-		LOOKUP_IDS_SYMBOL_OF_INT gender_name ~gender~ gender
-		LOOKUP_IDS_SYMBOL_OF_INT alignment_name ~alignmen~ alignment
+DEFINE_PATCH_MACRO ~data#load#creatures#data~
+BEGIN
+    READ_BYTE  0x234 level
+    READ_SHORT 0x246 kit
+    READ_BYTE  0x271 general
+    READ_BYTE  0x272 race
+    READ_BYTE  0x273 class
+    READ_BYTE  0x274 specific
+    READ_BYTE  0x275 gender
+    READ_BYTE  0x27b alignment
 
-		TO_LOWER creature
-		TO_LOWER kit_name
-		TO_LOWER general_name
-		TO_LOWER race_name
-		TO_LOWER class_name
-		TO_LOWER specific_name
-		TO_LOWER gender_name
-		TO_LOWER alignment_name
+    LOOKUP_IDS_SYMBOL_OF_INT kit_name ~kit~ kit
+    LOOKUP_IDS_SYMBOL_OF_INT general_name ~general~ general
+    LOOKUP_IDS_SYMBOL_OF_INT race_name ~race~ race
+    LOOKUP_IDS_SYMBOL_OF_INT class_name ~class~ class
+    LOOKUP_IDS_SYMBOL_OF_INT specific_name ~specific~ specific
+    LOOKUP_IDS_SYMBOL_OF_INT gender_name ~gender~ gender
+    LOOKUP_IDS_SYMBOL_OF_INT alignment_name ~alignmen~ alignment
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_kit_%kit_name%~) BEGIN
-		    PATCH_IF kit != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
-		    END
-		    SPRINT ~kit_name~ ~none~
-		END
+    TO_LOWER creature
+    TO_LOWER kit_name
+    TO_LOWER general_name
+    TO_LOWER race_name
+    TO_LOWER class_name
+    TO_LOWER specific_name
+    TO_LOWER gender_name
+    TO_LOWER alignment_name
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_general_%general_name%~) BEGIN
-		    PATCH_IF general != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
-		    END
-		    SPRINT ~general_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_kit_%kit_name%~) BEGIN
+        PATCH_IF kit != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
+        END
+        SPRINT ~kit_name~ ~none~
+    END
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_race_%race_name%~) BEGIN
-		    PATCH_IF race != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
-		    END
-		    SPRINT ~race_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_general_%general_name%~) BEGIN
+        PATCH_IF general != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
+        END
+        SPRINT ~general_name~ ~none~
+    END
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_class_%class_name%~) BEGIN
-		    PATCH_IF class != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
-		    END
-		    SPRINT ~class_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_race_%race_name%~) BEGIN
+        PATCH_IF race != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
+        END
+        SPRINT ~race_name~ ~none~
+    END
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_specific_%specific_name%~) BEGIN
-		    PATCH_IF specific != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
-		    END
-		    SPRINT ~specific_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_class_%class_name%~) BEGIN
+        PATCH_IF class != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
+        END
+        SPRINT ~class_name~ ~none~
+    END
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_gender_%gender_name%~) BEGIN
-		    PATCH_IF gender != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
-		    END
-		    SPRINT ~gender_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_specific_%specific_name%~) BEGIN
+        PATCH_IF specific != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
+        END
+        SPRINT ~specific_name~ ~none~
+    END
 
-		PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_alignment_%alignment_name%~) BEGIN
-		    PATCH_IF alignment != 0 BEGIN
-		        LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
-		    END
-		    SPRINT ~alignment_name~ ~none~
-		END
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_gender_%gender_name%~) BEGIN
+        PATCH_IF gender != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
+        END
+        SPRINT ~gender_name~ ~none~
+    END
 
-        SET $group_cre_all(~%creature%~) = 1
-        SET $group_count(~group_cre_all~) += 1
+    PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_alignment_%alignment_name%~) BEGIN
+        PATCH_IF alignment != 0 BEGIN
+            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
+        END
+        SPRINT ~alignment_name~ ~none~
+    END
 
-        SET $~group_cre_kit_%kit_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_kit_%kit_name%~) += 1
+    SET $group_cre_all(~%creature%~) = 1
+    SET $group_count(~group_cre_all~) += 1
 
-        SET $~group_cre_general_%general_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_general_%general_name%~) += 1
+    SET $~group_cre_kit_%kit_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_kit_%kit_name%~) += 1
 
-        SET $~group_cre_race_%race_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_race_%race_name%~) += 1
+    SET $~group_cre_general_%general_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_general_%general_name%~) += 1
 
-        SET $~group_cre_class_%class_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_class_%class_name%~) += 1
+    SET $~group_cre_race_%race_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_race_%race_name%~) += 1
 
-        SET $~group_cre_specific_%specific_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_specific_%specific_name%~) += 1
+    SET $~group_cre_class_%class_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_class_%class_name%~) += 1
 
-        SET $~group_cre_gender_%gender_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_gender_%gender_name%~) += 1
+    SET $~group_cre_specific_%specific_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_specific_%specific_name%~) += 1
 
-        SET $~group_cre_alignment_%alignment_name%~(~%creature%~) = 1
-        SET $group_count(~group_cre_alignment_%alignment_name%~) += 1
+    SET $~group_cre_gender_%gender_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_gender_%gender_name%~) += 1
 
-        SET $~group_cre_level_%level%~(~%creature%~) = 1
-        SET $group_count(~group_cre_level_%level%~) += 1
+    SET $~group_cre_alignment_%alignment_name%~(~%creature%~) = 1
+    SET $group_count(~group_cre_alignment_%alignment_name%~) += 1
 
-        PATCH_PHP_EACH ~item_slots~ AS offset => slot_name BEGIN
-            READ_SHORT (%slot_offset% + (%offset% * 0x02)) slot
-            PATCH_IF (%slot% != 0xffff) BEGIN
-                READ_ASCII (item_offset + slot * 0x14) resref
-                READ_LONG (item_offset + 0x10 + (slot * 0x14)) creItemFlags
+    SET $~group_cre_level_%level%~(~%creature%~) = 1
+    SET $group_count(~group_cre_level_%level%~) += 1
+END
 
-                SET droppable = (creItemFlags BAND BIT3) == 0
+DEFINE_PATCH_MACRO ~data#load#creatures#slots~
+BEGIN
+    READ_LONG  0x2b8 slot_offset
+    READ_LONG  0x2bc item_offset
 
-                PATCH_IF droppable BEGIN
-                    INNER_ACTION BEGIN
-                        ACTION_IF FILE_EXISTS_IN_GAME ~%resref%.itm~ BEGIN
-                            COPY_EXISTING ~%resref%.itm~ ~~
-                                READ_SHORT  0x18 itemFlags
-                                READ_STRREF 0x50 originalUnidentifiedDescription
-                                READ_LONG   0x50 originalUnidentifiedDescriptionRef
-                                READ_STRREF 0x54 originalDescription
-                                READ_LONG   0x54 originalDescriptionRef
+    PATCH_PHP_EACH ~item_slots~ AS offset => slot_name BEGIN
+        READ_SHORT (%slot_offset% + (%offset% * 0x02)) slot
+        PATCH_IF (%slot% != 0xffff) BEGIN
+            READ_ASCII (item_offset + (slot * 0x14)) resref
+            READ_LONG  (item_offset + (slot * 0x14) + 0x10) creItemFlags
 
-                                SET droppable = (itemFlags BAND BIT2) != 0
-                                PATCH_IF droppable AND (~%originalDescription%~ STRING_EQUAL ~~ OR originalDescriptionRef <= 0) AND (~%originalUnidentifiedDescription%~ STRING_EQUAL ~~ OR originalUnidentifiedDescriptionRef <= 0) BEGIN
-                                    SET droppable = 0
-                                END
-                            BUT_ONLY
-                        END
+            SET droppable = (creItemFlags BAND BIT3) == 0
+
+            PATCH_IF droppable BEGIN
+                INNER_ACTION BEGIN
+                    ACTION_IF FILE_EXISTS_IN_GAME ~%resref%.itm~ BEGIN
+                        COPY_EXISTING ~%resref%.itm~ ~~
+                            READ_SHORT  0x18 itemFlags
+                            READ_STRREF 0x50 originalUnidentifiedDescription
+                            READ_LONG   0x50 originalUnidentifiedDescriptionRef
+                            READ_STRREF 0x54 originalDescription
+                            READ_LONG   0x54 originalDescriptionRef
+
+                            SET droppable = (itemFlags BAND BIT2) != 0
+                            PATCH_IF droppable AND (~%originalDescription%~ STRING_EQUAL ~~ OR originalDescriptionRef <= 0) AND (~%originalUnidentifiedDescription%~ STRING_EQUAL ~~ OR originalUnidentifiedDescriptionRef <= 0) BEGIN
+                                SET droppable = 0
+                            END
+                        BUT_ONLY
                     END
                 END
+            END
 
-                PATCH_IF NOT droppable BEGIN
-                    SET $~cre_locked_slot_%slot_name%~(~%creature%~) = 1
-                END
+            PATCH_IF NOT droppable BEGIN
+                SET $~cre_locked_slot_%slot_name%~(~%creature%~) = 1
             END
         END
+    END
 
-        SET empty_inventory_slots = 16
-        FOR (offset = 1; offset <= 16; ++offset) BEGIN
-            READ_SHORT (%slot_offset% + ((%offset% + 20) * 0x02)) slot
-            PATCH_IF (%slot% != 0xffff) BEGIN
-                SET empty_inventory_slots -= 1
+    SET empty_inventory_slots = 16
+    FOR (offset = 1; offset <= 16; ++offset) BEGIN
+        READ_SHORT (%slot_offset% + ((%offset% + 20) * 0x02)) slot
+        PATCH_IF (%slot% != 0xffff) BEGIN
+            SET empty_inventory_slots -= 1
+        END
+    END
+    SET $empty_inventory_slots(~%creature%~) = empty_inventory_slots
+END
+
+DEFINE_PATCH_MACRO ~data#load#creatures#proficiencies~
+BEGIN
+    READ_BYTE 0x33  version
+    READ_LONG 0x2c4 effect_offset
+    READ_LONG 0x2c8 effect_count
+    FOR (index = 0 ; index < effect_count ; ++index) BEGIN
+        SET index_offset = effect_offset + ((0x30 + (version * 0xd8)) * index)
+        READ_SHORT ((version * 0x08) + index_offset + 0x00) opcode
+        PATCH_IF opcode = 233 BEGIN
+            READ_SHORT ((version * 0x10) + index_offset + 0x04) stars
+            READ_SHORT ((version * 0x10) + index_offset + 0x08) proficiency
+
+            LOOKUP_IDS_SYMBOL_OF_INT proficiency_name ~wprof~ proficiency
+            TO_LOWER proficiency_name
+
+            PATCH_IF VARIABLE_IS_SET $group_count(~group_cre_proficiency_%proficiency_name%~) BEGIN
+                SET $~group_cre_proficiency_%proficiency_name%~(~%creature%~) = stars
+                SET $group_count(~group_cre_proficiency_%proficiency_name%~) += 1
             END
         END
-        SET $empty_inventory_slots(~%creature%~) = empty_inventory_slots
-	BUT_ONLY
+    END
 END
 
 /*
