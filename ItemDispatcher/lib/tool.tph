@@ -105,6 +105,8 @@ END
 DEFINE_PATCH_FUNCTION ~tool#integer~
     INT_VAR
         default = 100
+        min = 0
+        max = 0
     STR_VAR
         value = ~~
     RET
@@ -114,6 +116,14 @@ BEGIN
 
     PATCH_IF IS_AN_INT value AND value > 0 AND value <= 100 BEGIN
         SET ~integer~ = value
+    END
+
+    PATCH_IF min > integer BEGIN
+        SET integer = min
+    END
+
+    PATCH_IF max < integer BEGIN
+        SET integer = max
     END
 END
 
