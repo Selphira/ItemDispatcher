@@ -21,7 +21,7 @@ BEGIN
                 CLEAR_ARRAY difficulties
                 CLEAR_ARRAY targets
 
-P                LPF ~tool#integer~ INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
+                LPF ~tool#integer~ INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
 
                 PATCH_IF RANDOM(1 100) <= chance BEGIN
                     LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
