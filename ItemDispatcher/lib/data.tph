@@ -280,10 +280,10 @@ BEGIN
 
 		LOOKUP_IDS_SYMBOL_OF_INT category_name ~itemcat~ category
 
+        TO_LOWER category_name
+
 		LPF ~data#load#armor_type~ STR_VAR animation RET armor_type END
         LPF ~data#load#is_weapon~ STR_VAR category RET is_weapon END
-
-        TO_LOWER category_name
 
 		SET twohanded = (flags BAND BIT1) != 0
 		SET cursed    = (flags BAND BIT4) != 0
@@ -415,10 +415,12 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~gen~ => ~cre~
     ~spc~ => ~cre~
     ~lvl~ => ~cre~
+    ~itm~ => ~itm~
     ~2hd~ => ~itm~
     ~arm~ => ~itm~
     ~cat~ => ~itm~
     ~ilv~ => ~itm~
+    ~mgr~ => ~itm~
     ~grp~ => ~~
 END
 

@@ -6,14 +6,37 @@ DEFINE_PATCH_FUNCTION ~selector#item#get~
         item
 BEGIN
     SET is_random = 0
+    SET count_eligible_targets = 0
+    SET count_itm_targets = 0
+
     SPRINT ~item~ ~~
+
+    CLEAR_ARRAY eligible_targets
+    CLEAR_ARRAY itm_targets
 
     PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9]+\.itm$~ == 0 BEGIN
         SPRINT ~item~ ~%target%~
     END
     ELSE BEGIN
-        LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
         SET is_random = 1
+
+        LPF ~tool#array#clone~ STR_VAR array = ~group_itm_all~ RET count_itm_targets = count RET_ARRAY itm_targets = new_array END
+
+        LPM ~selector#target#filter~
+
+        // Toutes les cibles potentielles sont placées dans un unique tableau
+        PATCH_PHP_EACH ~itm_targets~ AS item => _ BEGIN
+            SET count_eligible_targets += 1
+            SPRINT $eligible_targets(~%count_eligible_targets%~) ~%item%~
+        END
+
+        PATCH_PRINT ~Objets potentiels pour %target% : %count_eligible_targets% / %count%~ PATCH_SILENT
+
+        LPF ~tool#array#get_random~ INT_VAR array_count = count_eligible_targets number_to_select = 1 STR_VAR array = ~eligible_targets~ RET count_targets = count_selected RET_ARRAY targets = selected_array END
+
+        PATCH_IF VARIABLE_IS_SET $targets(0) BEGIN
+            SPRINT item $targets(0)
+        END
     END
 
     // Ne pas sélectionner d'objet non droppable (il y a sans doute une raison à ça)
@@ -46,6 +69,7 @@ DEFINE_PATCH_FUNCTION ~selector#target#get~
     INT_VAR
         count = 0
         count_is_percent = 0
+        item_is_equipable = 0
     STR_VAR
         target = ~~
         item = ~~
@@ -56,69 +80,70 @@ DEFINE_PATCH_FUNCTION ~selector#target#get~
 BEGIN
     SET is_random = 0
     SET count_targets = 0
+    SET count_eligible_targets = 0
     SET count_cre_targets = 0
     SET count_sto_targets = 0
     SET count_cnt_targets = 0
 
     CLEAR_ARRAY targets
+    CLEAR_ARRAY eligible_targets
     CLEAR_ARRAY cre_targets
     CLEAR_ARRAY sto_targets
     CLEAR_ARRAY cnt_targets
 
-    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-zA-Z0-9]+\.cre$~ == 0 BEGIN
-        SPRINT $targets(1) ~%target%~
-        SET count_targets = 1
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-zA-Z0-9#]+\.cre$~ == 0 BEGIN
+        PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
+            SPRINT $targets(1) ~%target%~
+        END
     END
     ELSE BEGIN
-        // Préremplissage des tableaux contenant les cibles potentielles
+        SET is_random = 1
+
         LPF ~tool#array#clone~ STR_VAR array = ~group_cre_all~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
         LPF ~tool#array#clone~ STR_VAR array = ~group_sto_all~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
         LPF ~tool#array#clone~ STR_VAR array = ~group_cnt_all~ RET count_sto_targets = count RET_ARRAY cnt_targets = new_array END
 
-        LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
-
-        PATCH_PHP_EACH parts AS index => part BEGIN
-            SET $group_count(~group_temporary~) = 0
-            CLEAR_ARRAY group_temporary
-
-            LPF ~selector#target#determine_group~ STR_VAR part RET is_negative group_name group_type RET_ARRAY group_count group_temporary END
-
-            // On s'assure que le groupe désiré existe
-            PATCH_IF NOT VARIABLE_IS_SET $group_count(~%group_name%~) BEGIN
-                PATCH_FAIL ~%target% : Invalid group (%group_name%)~
-            END
-
-            PATCH_IF NOT VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
-                PATCH_FAIL ~%target% : Invalid group type (%group_type%)~
-            END
-
-            SPRINT target_group_category $target_group_categories(~%group_type%~)
-
-            SET group_count_selected = $group_count(~%group_name%~)
-
-            PATCH_MATCH ~%target_group_category%~
-            WITH
-                ~cre~ BEGIN LPM ~selector#target#filter_cre~ END
-                ~sto~ BEGIN LPM ~selector#target#filter_sto~ END
-                ~cnt~ BEGIN LPM ~selector#target#filter_cnt~ END
-                DEFAULT     LPM ~selector#target#filter_all~ END
-
-            //TODO: Tout rassembler en un seul tableau
-            //TODO: Effectuer la sélection aléatoire
-            SET countGroup = $group_count(~%group_name%~)
-            PATCH_PRINT ~Cibles potentielles apres %part% (%group_name% (%countGroup%)) : %count_cre_targets% (cre) - %count_sto_targets% (sto) - %count_cnt_targets% (cnt)~
+        PATCH_IF item_is_equipable == 1 BEGIN
+            // TODO: Limiter les cibles potentielles selon l'objet donnés !
+            // En filtrant de base les magasins (type d'objet accepté) et les créatures (si objet à équiper) éligibles !
+            // Préremplissage des tableaux contenant les cibles potentielles
+            /*
+               si objet doit être équipé et que c'est une arme ou un bouclier, ne prendre que les créatures qui
+               ont le proficiency approprié, attention pour bouclier, pas de prof directement dans l'objet, need prof épée et bouclier !
+               pour bouclier, seulement si créature a bien une arme à 1 mains équipée... pas de bouclier seul ou avec arme a 2 mains !!!
+                    SET $~group_cre_proficiency_%proficiency_name%~(~%creature%~) = stars
+                    SET $group_count(~group_cre_proficiency_%proficiency_name%~) += 1
+             */
+            // cre_locked_slot_xxx Avoir un get_item_slot
+            // can wear item // not in group qui ne peut pas porter d'objet
+            // is_weapon // que les créature qui on une compétence martiale pour l'arme à distribuer
+            // is_shield // que les créature qui on une compétence martiale en épée et bouclier ou qui portent déjà un bouclier
         END
+
+        LPM ~selector#target#filter~
+
+        // Toutes les cibles potentielles sont placées dans un unique tableau
+        PATCH_PHP_EACH ~cre_targets~ AS creature => _ BEGIN
+            SET count_eligible_targets += 1
+            SPRINT $eligible_targets(~%count_eligible_targets%~) ~%creature%~
+        END
+        PATCH_PHP_EACH ~sto_targets~ AS store => _ BEGIN
+            SET count_eligible_targets += 1
+            SPRINT $eligible_targets(~%count_eligible_targets%~) ~%store%~
+        END
+        PATCH_PHP_EACH ~cnt_targets~ AS container => _ BEGIN
+            SET count_eligible_targets += 1
+            SPRINT $eligible_targets(~%count_eligible_targets%~) ~%container%~
+        END
+
+        PATCH_IF count_is_percent == 1 BEGIN
+            SET count = count_eligible_targets / count * 100
+        END
+
+        PATCH_PRINT ~Cibles potentielles pour %target% : %count_eligible_targets% / %count%~ PATCH_SILENT
+
+        LPF ~tool#array#get_random~ INT_VAR array_count = count_eligible_targets number_to_select = count STR_VAR array = ~eligible_targets~ RET count_targets = count_selected RET_ARRAY targets = selected_array END
     END
-        // Une même cible ne peut pas être 2 fois dans la liste des cibles sélectionnées
-        // Si count >= au nombre de cibles dispo => ~target#get_all~
-        // sinon traitement normal
-        //
-    // TODO: Compter le nombre de cibles valides
-    // TODO: Si <= que le nombre désiré, toutes les retourner
-    // TODO: Si l'objet est destiné à être équipé, sélectionner une cible valide
-    //       Le faire dans une autre fonction plus spécialisée
-    //       S'assurer d'avoir une cible qui peut la porter, qui a la compétence, qui n'a pas déjà été sélectionnée pour une répartition dans ce slot, etc.
-    // TODO: Gérer le cas où aucune cible valide n'est présente
 END
 
 DEFINE_PATCH_FUNCTION ~selector#target#get_bypercent~
@@ -156,6 +181,48 @@ DEFINE_PATCH_FUNCTION ~selector#target#get_all~
         targets
 BEGIN
     // Retourne toutes les cibles
+END
+
+DEFINE_PATCH_MACRO ~selector#target#filter~
+BEGIN
+    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
+
+    PATCH_PHP_EACH parts AS index => part BEGIN
+        SET $group_count(~group_temporary~) = 0
+        CLEAR_ARRAY group_temporary
+
+        LPF ~selector#target#determine_group~ STR_VAR part RET is_negative group_name group_type RET_ARRAY group_count group_temporary END
+
+        // On s'assure que le groupe désiré existe
+        PATCH_IF NOT VARIABLE_IS_SET $group_count(~%group_name%~) BEGIN
+            PATCH_FAIL ~%target% : Invalid group (%part%)~
+        END
+
+        PATCH_IF NOT VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
+            PATCH_FAIL ~%target% : Invalid group type (%group_type%)~
+        END
+
+        SPRINT target_group_category $target_group_categories(~%group_type%~)
+
+        PATCH_MATCH ~%target_group_category%~
+        WITH
+            ~cre~ BEGIN LPM ~selector#target#filter_cre~ END
+            ~sto~ BEGIN LPM ~selector#target#filter_sto~ END
+            ~cnt~ BEGIN LPM ~selector#target#filter_cnt~ END
+            ~itm~ BEGIN LPM ~selector#target#filter_itm~ END
+            DEFAULT     LPM ~selector#target#filter_all~
+        END
+    END
+END
+
+DEFINE_PATCH_MACRO ~selector#target#filter_itm~
+BEGIN
+    PATCH_IF is_negative == 0 BEGIN
+        LPF ~tool#array#intersect~ STR_VAR array = ~itm_targets~ array2 = ~%group_name%~ RET count_itm_targets = count RET_ARRAY itm_targets = new_array END
+    END
+    ELSE BEGIN
+        LPF ~tool#array#diff~ STR_VAR array = ~itm_targets~ array2 = ~%group_name%~ RET count_itm_targets = count RET_ARRAY itm_targets = new_array END
+    END
 END
 
 DEFINE_PATCH_MACRO ~selector#target#filter_cre~

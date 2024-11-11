@@ -21,41 +21,51 @@ BEGIN
                 CLEAR_ARRAY difficulties
                 CLEAR_ARRAY targets
 
-                LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
-                LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
-                LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
-                LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
-                LPF ~tool#boolean~ INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
-                LPF ~tool#integer~ INT_VAR default = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
-                LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
-                LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
-                LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
-                LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ STR_VAR target = ~%row_target%~ item RET_ARRAY targets END
+P                LPF ~tool#integer~ INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
 
-                // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
-                // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
-                // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
+                PATCH_IF RANDOM(1 100) <= chance BEGIN
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
+                    LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
+                    LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
+                    LPF ~tool#boolean~ INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
+                    LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
+                    LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
+                    // TODO: lire la source
 
-                // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
-                //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
-                // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
-                // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
-                // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
-                //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
+                    // TODO: Si l'objet est aléatoire et que le nombre de cible est plus grand que 1
+                    //       Boucler afin d'avoir potentiellement un objet différent par cible ! Et évidemment sélectionner une cible à la fois
+                    //       Faire en sorte qu'à l'itération suivante, la même cible ne puisse pas être ressélectionnée
+                    //       Arrêter si plus aucune cible disponible pour le nombre voulu...
 
-                // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
+                    LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
+                    LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ item_is_equipable = equipable STR_VAR target = ~%row_target%~ item RET target_is_random = is_random RET_ARRAY targets END
 
-                PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
-                    LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
-                END
-                ELSE BEGIN
-                    PATCH_PHP_EACH targets AS _ => target BEGIN
-                        PATCH_PRINT "Dispatching de %item% vers %target%"
+                    // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
+                    // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
+                    // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
+
+                    // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
+                    //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
+                    // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
+                    // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
+                    // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
+                    //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
+
+                    // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
+
+                    PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
+                        LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
                     END
-                    LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
-                    // TODO: Placer toutes les distributions validées dans des tableaux
-                    // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
-                    // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+                    ELSE BEGIN
+                        PATCH_PHP_EACH targets AS _ => target BEGIN
+                            PATCH_PRINT "Dispatching de %item% vers %target%"
+                        END
+                        LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
+                        // TODO: Placer toutes les distributions validées dans des tableaux
+                        // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
+                        // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+                    END
                 END
             WITH
                 DEFAULT LPF ~log#add_error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
