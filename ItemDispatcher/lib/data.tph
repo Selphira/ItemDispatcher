@@ -55,6 +55,7 @@ BEGIN
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.cre$~ ~override~
 	    SPRINT ~creature~ ~%SOURCE_FILE%~
+	    TO_LOWER creature
 
         LPM ~data#load#creatures#data~
         LPM ~data#load#creatures#slots~
@@ -81,7 +82,6 @@ BEGIN
     LOOKUP_IDS_SYMBOL_OF_INT gender_name ~gender~ gender
     LOOKUP_IDS_SYMBOL_OF_INT alignment_name ~alignmen~ alignment
 
-    TO_LOWER creature
     TO_LOWER kit_name
     TO_LOWER general_name
     TO_LOWER race_name
@@ -236,6 +236,7 @@ BEGIN
             END
         END
     END
+    // TODO: Si la créature n'a aucune compétence martiale, l'ajouter dans un tableau qui l'indique
 END
 
 /*
@@ -263,12 +264,14 @@ BEGIN
     LAF ~data#load#armor_types~  RET_ARRAY group_count END
     LAF ~data#load#enchantments~ RET_ARRAY group_count END
 
+    OUTER_SET $group_count(~group_itm_all~)        = 0
     OUTER_SET $group_count(~group_itm_cursed~)     = 0
     OUTER_SET $group_count(~group_itm_magical~)    = 0
     OUTER_SET $group_count(~group_itm_two_handed~) = 0
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
 	    SPRINT ~item~ ~%SOURCE_FILE%~
+	    TO_LOWER item
 
 		READ_LONG  0x18 flags
 		READ_SHORT 0x1c category
@@ -285,6 +288,9 @@ BEGIN
 		SET twohanded = (flags BAND BIT1) != 0
 		SET cursed    = (flags BAND BIT4) != 0
 		SET magical   = (flags BAND BIT6) != 0
+
+        SET $group_itm_all(~%item%~) = 1
+        SET $group_count(~group_itm_all~) += 1
 
         PATCH_IF NOT ~%armor_type%~ STRING_EQUAL ~~ BEGIN
             SET $~group_itm_armor_type_%armor_type%~(~%item%~) = 1
