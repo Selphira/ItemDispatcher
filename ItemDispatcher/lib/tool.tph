@@ -97,6 +97,9 @@ BEGIN
     PATCH_IF IS_AN_INT value AND (value == 0 OR value == 1) BEGIN
         SET ~boolean~ = value
     END
+    ELSE PATCH_IF ~%value%~ STRING_EQUAL ~?~ BEGIN
+        SET ~boolean~ = RANDOM(0 1)
+    END
 END
 
 DEFINE_PATCH_FUNCTION ~tool#integer~
