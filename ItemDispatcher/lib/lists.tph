@@ -168,6 +168,12 @@ BEGIN
     OUTER_SPRINT ~load_file_path~ ~%workspace%/ignored.2da~
     LAM ~lists#load#groups~
     LAM ~lists#load#treasures~
+
+    // On filtre d'avance les tableaux contenant tous les éléments disponibles à la sélection pour retirer les éléments ignorés.
+    LAF ~tool#array#diff~ STR_VAR array = ~group_cre_all~ array2 = ~group_ignored~ RET $group_count(~group_cre_all~) = count RET_ARRAY group_cre_all = new_array END
+    LAF ~tool#array#diff~ STR_VAR array = ~group_itm_all~ array2 = ~group_ignored~ RET $group_count(~group_itm_all~) = count RET_ARRAY group_itm_all = new_array END
+    LAF ~tool#array#diff~ STR_VAR array = ~group_sto_all~ array2 = ~group_ignored~ RET $group_count(~group_sto_all~) = count RET_ARRAY group_sto_all = new_array END
+    LAF ~tool#array#diff~ STR_VAR array = ~group_cnt_all~ array2 = ~group_ignored~ RET $group_count(~group_cnt_all~) = count RET_ARRAY group_cnt_all = new_array END
 END
 
 DEFINE_ACTION_MACRO ~lists#load#items~
@@ -202,6 +208,7 @@ BEGIN
 
 	    SET count = 0
         PATCH_PHP_EACH ~temporary_groups~ AS target => _ BEGIN
+	        TO_LOWER target
             SET $~group_%SOURCE_RES%~(~%target%~) = 1
 	        SET count += 1
         END
