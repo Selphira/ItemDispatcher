@@ -5,7 +5,7 @@ BEGIN
     PRINT ~Chargement des objets...~ SILENT
     LAM ~data#load#items~
     PRINT ~Chargement des magasins...~ SILENT
-    //LAM ~data#load#stores~
+    LAM ~data#load#stores~
 END
 
 /*
@@ -243,30 +243,38 @@ END
  * Crée des tableaux pour chaque type de filtre supporté à partir des données des objets du jeu.
  *
  * Tableau contenant le nombre d'objets correspondant au filtre
+ * - $group_count(~group_itm_all~)
  * - $group_count(~group_itm_armor_type_%armor_type%~)
  * - $group_count(~group_itm_category_%category_name%~)
  * - $group_count(~group_itm_cursed~)
  * - $group_count(~group_itm_enchantment_%enchantment%~)
  * - $group_count(~group_itm_magical~)
+ * - $group_count(~group_itm_movable~)
+ * - $group_count(~group_itm_slot_%slot_type%~)
  * - $group_count(~group_itm_two_handed~)
  *
  * Tableau contenant la liste d'objets correspondant au filtre
+ * - $group_itm_all(~%item%~) = 1
  * - $~group_itm_armor_type_%armor_type%~(~%item%~) = 1
  * - $~group_itm_category_%category_name%~(~%item%~) = 1
  * - $~group_itm_enchantment_%enchantment%~(~%item%~) = 1
+ * - $~group_itm_slot_%slot_type%~(~%item%~) = 1
  * - $group_itm_cursed(~%item%~) = 1
  * - $group_itm_magical(~%item%~) = 1
+ * - $group_itm_movable(~%item%~) = 1
  * - $group_itm_two_handed(~%item%~) = 1
  */
 DEFINE_ACTION_MACRO ~data#load#items~
 BEGIN
     LAF ~data#load#ids~ STR_VAR file = ~itemcat~ group = ~itm_category~ RET_ARRAY group_count END
+    LAF ~data#load#slots~  RET_ARRAY group_count END
     LAF ~data#load#armor_types~  RET_ARRAY group_count END
     LAF ~data#load#enchantments~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_itm_all~)        = 0
     OUTER_SET $group_count(~group_itm_cursed~)     = 0
     OUTER_SET $group_count(~group_itm_magical~)    = 0
+    OUTER_SET $group_count(~group_itm_movable~)    = 0
     OUTER_SET $group_count(~group_itm_two_handed~) = 0
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
@@ -284,8 +292,10 @@ BEGIN
 
 		LPF ~data#load#armor_type~ STR_VAR animation RET armor_type END
         LPF ~data#load#is_weapon~ STR_VAR category RET is_weapon END
+        LPF ~data#load#slot_type~ INT_VAR category RET slot_type END
 
 		SET twohanded = (flags BAND BIT1) != 0
+		SET movable   = (flags BAND BIT2) != 0
 		SET cursed    = (flags BAND BIT4) != 0
 		SET magical   = (flags BAND BIT6) != 0
 
@@ -302,9 +312,19 @@ BEGIN
             SET $group_count(~group_itm_category_%category_name%~) += 1
         END
 
+        PATCH_IF VARIABLE_IS_SET $group_count(~group_itm_slot_%slot_type%~) BEGIN
+            SET $~group_itm_slot_%slot_type%~(~%item%~) = 1
+            SET $group_count(~group_itm_slot_%slot_type%~) += 1
+        END
+
         PATCH_IF magical == 1 BEGIN
             SET $group_itm_magical(~%item%~) = 1
             SET $group_count(~group_itm_magical~) += 1
+        END
+
+        PATCH_IF movable == 1 BEGIN
+            SET $group_itm_movable(~%item%~) = 1
+            SET $group_count(~group_itm_movable~) += 1
         END
 
         PATCH_IF cursed == 1 BEGIN
@@ -320,6 +340,55 @@ BEGIN
         PATCH_IF is_weapon AND twohanded == 1 BEGIN
             SET $group_itm_two_handed(~%item%~) = 1
             SET $group_count(~group_itm_two_handed~) += 1
+        END
+	BUT_ONLY
+END
+
+/*
+ * Tableau contenant le nombre de stores correspondant au filtre
+ * - $group_count(~group_sto_all~)
+ * - $group_count(~group_sto_purchase_%category_name%~)
+ * - $group_count(~group_sto_type_%store_type%~)
+ *
+ * Tableau contenant la liste de stores correspondant au filtre
+ * - $group_sto_all(~%store%~) = 1
+ * - $~group_sto_purchase_%category_name%~(~%store%~) = 1
+ * - $~group_sto_type_%store_type%~(~%store%~) = 1
+ */
+DEFINE_ACTION_MACRO ~data#load#stores~
+BEGIN
+    LAF ~data#load#ids~ STR_VAR file = ~itemcat~ group = ~sto_purchase~ RET_ARRAY group_count END
+    LAF ~data#load#store_types~ RET_ARRAY group_count END
+
+    OUTER_SET $group_count(~group_sto_all~) = 0
+
+	COPY_EXISTING_REGEXP GLOB ~^.+\.sto$~ ~override~
+	    SPRINT ~store~ ~%SOURCE_FILE%~
+	    TO_LOWER store
+
+	    READ_LONG 0x8  store_type
+        READ_LONG 0x2c purchased_offset
+        READ_LONG 0x30 purchased_count
+
+        SET $group_sto_all(~%store%~) = 1
+        SET $group_count(~group_sto_all~) += 1
+
+        PATCH_IF VARIABLE_IS_SET $group_count(~group_sto_type_%store_type%~) BEGIN
+            SET $~group_sto_type_%store_type%~(~%store%~) = 1
+            SET $group_count(~group_sto_type_%store_type%~) += 1
+        END
+
+        FOR (index = 0 ; index < purchased_count ; ++index) BEGIN
+            READ_LONG (purchased_offset + (index * 0x04)) category
+
+            LOOKUP_IDS_SYMBOL_OF_INT category_name ~itemcat~ category
+
+            TO_LOWER category_name
+
+            PATCH_IF VARIABLE_IS_SET $group_count(~group_sto_purchase_%category_name%~) BEGIN
+                SET $~group_sto_purchase_%category_name%~(~%item%~) = 1
+                SET $group_count(~group_sto_purchase_%category_name%~) += 1
+            END
         END
 	BUT_ONLY
 END
@@ -367,6 +436,24 @@ BEGIN
     END
 END
 
+DEFINE_ACTION_FUNCTION ~data#load#slots~
+    RET_ARRAY
+        group_count
+BEGIN
+    ACTION_FOR_EACH slot_type IN ~helmet~ ~armor~ ~shield~ ~gloves~ ~left_ring~ ~right_ring~ ~amulet~ ~belt~ ~boots~ ~weapon~ ~quiver~ ~cloak~ ~quick_item~ BEGIN
+        OUTER_SET $group_count(~group_itm_slot_%slot_type%~) = 0
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#store_types~
+    RET_ARRAY
+        group_count
+BEGIN
+    ACTION_PHP_EACH store_types AS _ => store_type BEGIN
+        OUTER_SET $group_count(~group_sto_type_%store_type%~) = 0
+    END
+END
+
 DEFINE_ACTION_FUNCTION ~data#load#enchantments~
     RET_ARRAY
         group_count
@@ -405,6 +492,20 @@ BEGIN
     SET is_weapon = (category >= 0xf AND category <= 0x1e)
 END
 
+DEFINE_PATCH_FUNCTION ~data#load#slot_type~
+    INT_VAR
+        category = 0
+    RET
+        slot_type
+BEGIN
+    SPRINT slot_type ~~
+    PATCH_IF VARIABLE_IS_SET $item_category_to_item_slot(~%category%~) BEGIN
+        SET index = $item_category_to_item_slot(~%category%~)
+        SPRINT slot_type $item_slots(~%index%~)
+    END
+    INNER_PATCH_SAVE ~slot_type~ ~%slot_type%~ BEGIN REPLACE_TEXTUALLY ~[0-9]+$~ ~~ END
+END
+
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~cre~ => ~cre~
     ~rce~ => ~cre~
@@ -420,7 +521,10 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~arm~ => ~itm~
     ~cat~ => ~itm~
     ~ilv~ => ~itm~
-    ~mgr~ => ~itm~
+    ~igr~ => ~itm~
+    ~slt~ => ~itm~
+    ~sto~ => ~sto~
+    ~prc~ => ~sto~
     ~grp~ => ~~
 END
 
@@ -446,4 +550,78 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_slots~ BEGIN
     18 => ~quick_item1~
     19 => ~quick_item2~
     20 => ~quick_item3~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~store_types~ BEGIN
+    0 => ~store~
+    1 => ~tavern~
+    2 => ~inn~
+    3 => ~temple~
+    5 => ~container~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_category_to_item_slot~ BEGIN
+	// 0     // Misc
+	1 => 6	 // Amulets and necklaces
+	2 => 1	 // Armor
+	3 => 7	 // Belts and girdles
+	4 => 8	 // Boots
+	5 => 13	 // Arrows
+	6 => 3	 // Bracers and gauntlets
+	7 => 0	 // Headgear
+    // 8     // Keys
+	9 => 18	 // Potions
+	10 => 4	 // Rings
+	11 => 18 // Scrolls
+	12 => 2	 // Shields
+	// 13    // Food
+	14 => 13 // Bullets
+	15 => 9	 // Bows
+	16 => 9	 // Daggers
+	17 => 9	 // Maces
+	18 => 9	 // Slings
+	19 => 9	 // Small swords
+	20 => 9	 // Large swords
+	21 => 9	 // Hammers
+	22 => 9	 // Morning stars
+	23 => 9	 // Flails
+	24 => 9	 // Darts
+	25 => 9	 // Axes
+	26 => 9	 // Quarterstaff
+	27 => 9	 // Crossbow
+	28 => 9	 // Hand-to-hand weapons
+	29 => 9	 // Spears
+	30 => 9	 // Halberds
+	31 => 13 // Crossbow bolts
+	32 => 17 // Cloaks
+	// 33    // Gold
+	// 34    // Gems
+	35 => 18 // Wands
+	// 36    // Container
+	// 37    // Books
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_category_to_item_slot_limit~ BEGIN
+	5  => 16 // quiver
+	9  => 20 // quick item
+	10 => 5  // ring
+	11 => 20 // quick item
+	14 => 18 // quiver
+	15 => 12 // weapon
+	16 => 12 // weapon
+	17 => 12 // weapon
+	18 => 12 // weapon
+	19 => 12 // weapon
+	20 => 12 // weapon
+	21 => 12 // weapon
+	22 => 12 // weapon
+	23 => 12 // weapon
+	24 => 12 // weapon
+	25 => 12 // weapon
+	26 => 12 // weapon
+	27 => 12 // weapon
+	28 => 12 // weapon
+	29 => 12 // weapon
+	30 => 12 // weapon
+	31 => 15 // quiver
 END
