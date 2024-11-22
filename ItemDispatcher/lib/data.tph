@@ -217,6 +217,7 @@ END
 
 DEFINE_PATCH_MACRO ~data#load#creatures#proficiencies~
 BEGIN
+    LOCAL_SET has_proficiency = 0
     READ_BYTE 0x33  version
     READ_LONG 0x2c4 effect_offset
     READ_LONG 0x2c8 effect_count
@@ -233,10 +234,14 @@ BEGIN
             PATCH_IF VARIABLE_IS_SET $group_count(~group_cre_proficiency_%proficiency_name%~) BEGIN
                 SET $~group_cre_proficiency_%proficiency_name%~(~%creature%~) = stars
                 SET $group_count(~group_cre_proficiency_%proficiency_name%~) += 1
+                SET has_proficiency = 1
             END
         END
     END
-    // TODO: Si la créature n'a aucune compétence martiale, l'ajouter dans un tableau qui l'indique
+    PATCH_IF has_proficiency == 0 BEGIN
+        SET $group_cre_proficiency_none(~%creature%~) = 1
+        SET $group_count(~group_cre_proficiency_none~) += 1
+    END
 END
 
 /*
