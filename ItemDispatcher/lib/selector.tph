@@ -21,8 +21,8 @@ BEGIN
         SET is_random = 1
 
         LPF ~tool#array#clone~ STR_VAR array = ~group_itm_all~ RET count_itm_targets = count RET_ARRAY itm_targets = new_array END
-
-        LPM ~selector#target#filter~
+SET testCount = count_itm_targets
+        LPM ~selector#item#filter~
 
         // Toutes les cibles potentielles sont placées dans un unique tableau
         PATCH_PHP_EACH ~itm_targets~ AS item => _ BEGIN
@@ -30,7 +30,7 @@ BEGIN
             SPRINT $eligible_targets(~%count_eligible_targets%~) ~%item%~
         END
 
-        PATCH_PRINT ~Objets potentiels pour %target% : %count_eligible_targets% / %count%~ PATCH_SILENT
+        PATCH_PRINT ~Objets potentiels pour %target% : %count_eligible_targets% / %testCount%~ PATCH_SILENT
 
         LPF ~tool#array#get_random~ INT_VAR array_count = count_eligible_targets number_to_select = 1 STR_VAR array = ~eligible_targets~ RET count_targets = count_selected RET_ARRAY targets = selected_array END
 
@@ -38,18 +38,38 @@ BEGIN
             SPRINT item $targets(0)
         END
     END
+END
 
-    // Ne pas sélectionner d'objet non droppable (il y a sans doute une raison à ça)
+DEFINE_PATCH_MACRO ~selector#item#filter~
+BEGIN
+    // On ne garde que les objets déplaçables éligibles à la sélection aléatoire
+    LPF ~tool#array#intersect~ STR_VAR array = ~itm_targets~ array2 = ~group_itm_movable~ RET count_itm_targets = count RET_ARRAY itm_targets = new_array END
 
+    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
 
-    // ~tool#string#explode~
+    PATCH_PHP_EACH parts AS index => part BEGIN
+        SET $group_count(~group_temporary~) = 0
+        CLEAR_ARRAY group_temporary
 
-    // TODO: Sélection d'objet complexe.
-    //   Ex: sword.wpn&cursed.gnd&3.lvl // épée +3 maudite
-    //   Ex: plat.arm&!cursed.gnd&3.lvl // armure de plate +3 non maudite
-    //   Ex: leather.arm&!cursed.gnd&3-.lvl // armure de cuir non maudite normale, +1, +2 ou +3
-    //   Ex: mail.arm&!magic.gnd // armure de maille non magique
-    //   Ex: amulet.cat // Une amulette (catégorie d'objet)
+        LPF ~selector#target#determine_group~ STR_VAR part RET is_negative group_name group_type RET_ARRAY group_count group_temporary END
+
+        // On s'assure que le groupe désiré existe
+        PATCH_IF NOT VARIABLE_IS_SET $group_count(~%group_name%~) BEGIN
+            PATCH_FAIL ~%target% : Invalid group (%part%)~
+        END
+
+        PATCH_IF NOT VARIABLE_IS_SET $target_group_categories(~%group_type%~) BEGIN
+            PATCH_FAIL ~%target% : Invalid group type (%group_type%)~
+        END
+
+        SPRINT target_group_category $target_group_categories(~%group_type%~)
+
+        PATCH_IF NOT ~%target_group_category%~ STRING_EQUAL ~itm~ AND NOT ~%target_group_category%~ STRING_EQUAL ~~ BEGIN
+            PATCH_FAIL ~%target% : Invalid group category (%target_group_category%)~
+        END
+
+        LPM ~selector#target#filter_itm~
+    END
 END
 
 DEFINE_PATCH_FUNCTION ~selector#target#is_complex~
@@ -102,23 +122,6 @@ BEGIN
         LPF ~tool#array#clone~ STR_VAR array = ~group_cre_all~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
         LPF ~tool#array#clone~ STR_VAR array = ~group_sto_all~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
         LPF ~tool#array#clone~ STR_VAR array = ~group_cnt_all~ RET count_sto_targets = count RET_ARRAY cnt_targets = new_array END
-
-        PATCH_IF item_is_equipable == 1 BEGIN
-            // TODO: Limiter les cibles potentielles selon l'objet donnés !
-            // En filtrant de base les magasins (type d'objet accepté) et les créatures (si objet à équiper) éligibles !
-            // Préremplissage des tableaux contenant les cibles potentielles
-            /*
-               si objet doit être équipé et que c'est une arme ou un bouclier, ne prendre que les créatures qui
-               ont le proficiency approprié, attention pour bouclier, pas de prof directement dans l'objet, need prof épée et bouclier !
-               pour bouclier, seulement si créature a bien une arme à 1 mains équipée... pas de bouclier seul ou avec arme a 2 mains !!!
-                    SET $~group_cre_proficiency_%proficiency_name%~(~%creature%~) = stars
-                    SET $group_count(~group_cre_proficiency_%proficiency_name%~) += 1
-             */
-            // cre_locked_slot_xxx Avoir un get_item_slot
-            // can wear item // not in group qui ne peut pas porter d'objet
-            // is_weapon // que les créature qui on une compétence martiale pour l'arme à distribuer
-            // is_shield // que les créature qui on une compétence martiale en épée et bouclier ou qui portent déjà un bouclier
-        END
 
         LPM ~selector#target#filter~
 
@@ -209,7 +212,6 @@ BEGIN
             ~cre~ BEGIN LPM ~selector#target#filter_cre~ END
             ~sto~ BEGIN LPM ~selector#target#filter_sto~ END
             ~cnt~ BEGIN LPM ~selector#target#filter_cnt~ END
-            ~itm~ BEGIN LPM ~selector#target#filter_itm~ END
             DEFAULT     LPM ~selector#target#filter_all~
         END
     END
@@ -366,6 +368,7 @@ BEGIN
             ~2hd~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
             ~arm~ BEGIN SPRINT group_name ~group_itm_armor_type_%group_name%~ END
             ~cat~ BEGIN SPRINT group_name ~group_itm_category_%group_name%~ END
+            ~slt~ BEGIN SPRINT group_name ~group_itm_slot_%group_name%~ END
             ~ilv~ BEGIN
                 PATCH_IF IS_AN_INT group_name BEGIN
                     SPRINT group_name ~group_itm_enchantment_%group_name%~
@@ -383,11 +386,15 @@ BEGIN
                 END
             END
 
-            ~mgr~ BEGIN
+            ~prc~ BEGIN SPRINT group_name ~group_sto_purchase_%group_name%~ END
+            ~stt~ BEGIN SPRINT group_name ~group_sto_type_%group_name%~ END
+
+            ~igr~ BEGIN
                 PATCH_MATCH ~%group_name%~
                 WITH
                     ~cursed~ BEGIN SPRINT group_name ~group_itm_cursed~ END
                     ~magical~ BEGIN SPRINT group_name ~group_itm_magical~ END
+                    ~movable~ BEGIN SPRINT group_name ~group_itm_movable~ END
                     ~two_handed~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
                     DEFAULT
                 END

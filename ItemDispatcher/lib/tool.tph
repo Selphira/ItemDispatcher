@@ -36,7 +36,7 @@ BEGIN
         END
     END
     ELSE BEGIN
-        LPF ~log#add_warning~ STR_VAR message = ~%value% : Invalid quantity~ END
+        LPF ~log#add#warning~ STR_VAR message = ~%value% : Invalid quantity~ END
     END
 END
 

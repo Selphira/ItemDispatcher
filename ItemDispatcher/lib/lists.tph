@@ -68,7 +68,7 @@ BEGIN
         ~items~     BEGIN LAF ~lists#merge#file_items~ STR_VAR file END END
         ~groups~ ~ignored~ BEGIN LAF ~lists#merge#file_groups~ STR_VAR file END END
         ~treasures~ BEGIN LAF ~lists#merge#file_treasures~ STR_VAR file END END
-      DEFAULT     LAF ~log#add_warning~ STR_VAR message = ~Unsupported file type : %file% (%mod_name%)~ END
+      DEFAULT     LAF ~log#add#warning~ STR_VAR message = ~Unsupported file type : %file% (%mod_name%)~ END
     END
 END
 
@@ -80,21 +80,23 @@ BEGIN
         COPY ~.../inlined/blank~ ~%work_file_path%~
     END
     COPY ~%file%~ ~override~
-        READ_2DA_ENTRIES_NOW ~rows~ 11
+        READ_2DA_ENTRIES_NOW ~rows~ 13
         FOR (row = 1; row < rows; ++row) BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row  0 item_quantity
-            READ_2DA_ENTRY_FORMER ~rows~ row  1 item
-            READ_2DA_ENTRY_FORMER ~rows~ row  2 target_quantity
-            READ_2DA_ENTRY_FORMER ~rows~ row  3 target
-            READ_2DA_ENTRY_FORMER ~rows~ row  4 source
-            READ_2DA_ENTRY_FORMER ~rows~ row  5 chapter
-            READ_2DA_ENTRY_FORMER ~rows~ row  6 difficulty
-            READ_2DA_ENTRY_FORMER ~rows~ row  7 equipable
-            READ_2DA_ENTRY_FORMER ~rows~ row  8 stealable
-            READ_2DA_ENTRY_FORMER ~rows~ row  9 droppable
-            READ_2DA_ENTRY_FORMER ~rows~ row 10 chance
+            READ_2DA_ENTRY_FORMER ~rows~ row  1 item_per_target
+            READ_2DA_ENTRY_FORMER ~rows~ row  2 max_stack_size
+            READ_2DA_ENTRY_FORMER ~rows~ row  3 item
+            READ_2DA_ENTRY_FORMER ~rows~ row  4 target_quantity
+            READ_2DA_ENTRY_FORMER ~rows~ row  5 target
+            READ_2DA_ENTRY_FORMER ~rows~ row  6 source
+            READ_2DA_ENTRY_FORMER ~rows~ row  7 chapter
+            READ_2DA_ENTRY_FORMER ~rows~ row  8 difficulty
+            READ_2DA_ENTRY_FORMER ~rows~ row  9 equipable
+            READ_2DA_ENTRY_FORMER ~rows~ row 10 stealable
+            READ_2DA_ENTRY_FORMER ~rows~ row 11 droppable
+            READ_2DA_ENTRY_FORMER ~rows~ row 12 chance
 
-            SPRINT ~line~ ~%item_quantity%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
+            SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%max_stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END
@@ -142,7 +144,7 @@ BEGIN
         BUT_ONLY
     END
     ELSE BEGIN
-        LAF ~log#add_error~ STR_VAR message = ~%treasure_name% : Treasure list name exceeds 8 characters (%mod_name%)~ END
+        LAF ~log#add#error~ STR_VAR message = ~%treasure_name% : Treasure list name exceeds 8 characters (%mod_name%)~ END
     END
 END
 
@@ -213,7 +215,6 @@ BEGIN
 	        SET count += 1
         END
         SET $groups(~%SOURCE_RES%~) = count
-        PATCH_PRINT "Groupe : %SOURCE_RES% : %count%"
 	BUT_ONLY
 END
 
@@ -280,21 +281,23 @@ BEGIN
                         END
                     END
                 END
-                ~arm~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_armor_type_%target_name%~     RET_ARRAY temporary_groups END END
-                ~cat~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_category_%target_name%~     RET_ARRAY temporary_groups END END
-                ~mgr~   BEGIN
+                ~arm~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_armor_type_%target_name%~ RET_ARRAY temporary_groups END END
+                ~cat~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_category_%target_name%~   RET_ARRAY temporary_groups END END
+                ~slt~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_slot_%target_name%~       RET_ARRAY temporary_groups END END
+                ~igr~   BEGIN
                     PATCH_MATCH ~%target_name%~
                     WITH
                         ~cursed~     BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_cursed~     RET_ARRAY temporary_groups END END
                         ~magical~    BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_magical~    RET_ARRAY temporary_groups END END
+                        ~movable~    BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_movable~    RET_ARRAY temporary_groups END END
                         ~two_handed~ BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_two_handed~ RET_ARRAY temporary_groups END END
-                        DEFAULT LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
+                        DEFAULT LPF ~log#add#error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
                     END
                 END
                 // Groupes génériques et complexes
                 ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
-                ~complex~ BEGIN LPF ~log#add_error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
-                DEFAULT LPF ~log#add_error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
+                ~complex~ BEGIN LPF ~log#add#error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
+                DEFAULT LPF ~log#add#error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
             END
         END
     END
@@ -304,7 +307,7 @@ BEGIN
             SPRINT ~groups_path~ ~%groups_path%%group% > ~
         END
         SPRINT ~groups_path~ ~%groups_path%%group_name%~
-        LPF ~log#add_warning~ STR_VAR message = ~%group_name% : Circular reference %groups_path% (%mod_name%)~ END
+        LPF ~log#add#warning~ STR_VAR message = ~%group_name% : Circular reference %groups_path% (%mod_name%)~ END
     END
 END
 
@@ -322,7 +325,7 @@ BEGIN
         END
     END
     ELSE BEGIN
-        LPF ~log#add_error~ STR_VAR message = ~%ref_group_name% : Group referenced in %group_name%.grp doesn't exist (%mod_name%)~ END
+        LPF ~log#add#error~ STR_VAR message = ~%ref_group_name% : Group referenced in %group_name%.grp doesn't exist (%mod_name%)~ END
     END
 END
 
@@ -334,7 +337,7 @@ BEGIN
         SET $temporary_groups(~%target%~) = 1
     END
     ELSE BEGIN
-        LPF ~log#add_warning~ STR_VAR message = ~%target% : Target not exist in group %SOURCE_RES% (%mod_name%)~ END
+        LPF ~log#add#warning~ STR_VAR message = ~%target% : Target not exist in group %SOURCE_RES% (%mod_name%)~ END
     END
 END
 

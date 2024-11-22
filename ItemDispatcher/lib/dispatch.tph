@@ -1,30 +1,36 @@
 DEFINE_ACTION_MACRO ~dispatch#run~
 BEGIN
     COPY ~%workspace%/items.2da~ ~override~
-        READ_2DA_ENTRIES_NOW ~rows~ 12
+        READ_2DA_ENTRIES_NOW ~rows~ 14
         FOR (row = 0; row < rows; ++row) BEGIN
             PATCH_TRY
                 READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
-                READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item
-                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_target_quantity
-                READ_2DA_ENTRY_FORMER ~rows~ row  3 row_target
-                READ_2DA_ENTRY_FORMER ~rows~ row  4 row_source
-                READ_2DA_ENTRY_FORMER ~rows~ row  5 row_chapter
-                READ_2DA_ENTRY_FORMER ~rows~ row  6 row_difficulty
-                READ_2DA_ENTRY_FORMER ~rows~ row  7 row_equipable
-                READ_2DA_ENTRY_FORMER ~rows~ row  8 row_stealable
-                READ_2DA_ENTRY_FORMER ~rows~ row  9 row_droppable
-                READ_2DA_ENTRY_FORMER ~rows~ row 10 row_chance
-                READ_2DA_ENTRY_FORMER ~rows~ row 11 mod_name
+                READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item_per_target
+                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_max_stack_size
+                READ_2DA_ENTRY_FORMER ~rows~ row  3 row_item
+                READ_2DA_ENTRY_FORMER ~rows~ row  4 row_target_quantity
+                READ_2DA_ENTRY_FORMER ~rows~ row  5 row_target
+                READ_2DA_ENTRY_FORMER ~rows~ row  6 row_source
+                READ_2DA_ENTRY_FORMER ~rows~ row  7 row_chapter
+                READ_2DA_ENTRY_FORMER ~rows~ row  8 row_difficulty
+                READ_2DA_ENTRY_FORMER ~rows~ row  9 row_equipable
+                READ_2DA_ENTRY_FORMER ~rows~ row 10 row_stealable
+                READ_2DA_ENTRY_FORMER ~rows~ row 11 row_droppable
+                READ_2DA_ENTRY_FORMER ~rows~ row 12 row_chance
+                READ_2DA_ENTRY_FORMER ~rows~ row 13 mod_name
 
                 CLEAR_ARRAY chapters
                 CLEAR_ARRAY difficulties
                 CLEAR_ARRAY targets
 
                 LPF ~tool#integer~ INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
+                // TODO: Pour le cas où il y aurait plusieurs objets à dispatcher pour une même ligne, la chance devrait s'activer pour chacun d'eux !
+                //       Ex: On veut dispatcher tous les parchemins de l'Interplan, "* interplan-scrolls.grp", chaque parchemin aura x pourcentage de chance d'être pris en compte
 
                 PATCH_IF RANDOM(1 100) <= chance BEGIN
                     LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_item_per_target%~ RET item_per_target_is_percent = is_percent item_per_target = quantity END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_max_stack_size%~ RET max_stack_size_is_percent = is_percent max_stack_size = quantity END
                     LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
                     LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
                     LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
@@ -55,7 +61,7 @@ BEGIN
                     // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
 
                     PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
-                        LPF ~log#add_warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
+                        LPF ~log#add#warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
                     END
                     ELSE BEGIN
                         PATCH_PHP_EACH targets AS _ => target BEGIN
@@ -68,7 +74,7 @@ BEGIN
                     END
                 END
             WITH
-                DEFAULT LPF ~log#add_error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
+                DEFAULT LPF ~log#add#error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
             END
         END
     BUT_ONLY

@@ -30,4 +30,5 @@ LAF ~log#init~ END
 LAF ~lists#merge~ END // Récupération des listes présentes dans les autres mods
 LAM ~data#load~       // Création des tableaux basés sur les données du jeu
 LAM ~lists#load~      // Création des tableaux basés sur les listes
+LAF ~log#debug~ END   // Ajout des données de debug des différentes listes
 LAM ~dispatch#run~    // Répartition des objets !

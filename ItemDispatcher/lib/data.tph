@@ -92,49 +92,49 @@ BEGIN
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_kit_%kit_name%~) BEGIN
         PATCH_IF kit != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid kit value (%kit%)~ END
         END
         SPRINT ~kit_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_general_%general_name%~) BEGIN
         PATCH_IF general != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid general value (%general%)~ END
         END
         SPRINT ~general_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_race_%race_name%~) BEGIN
         PATCH_IF race != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid race value (%race%)~ END
         END
         SPRINT ~race_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_class_%class_name%~) BEGIN
         PATCH_IF class != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid class value (%class%)~ END
         END
         SPRINT ~class_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_specific_%specific_name%~) BEGIN
         PATCH_IF specific != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid specific value (%specific%)~ END
         END
         SPRINT ~specific_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_gender_%gender_name%~) BEGIN
         PATCH_IF gender != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid gender value (%gender%)~ END
         END
         SPRINT ~gender_name~ ~none~
     END
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_alignment_%alignment_name%~) BEGIN
         PATCH_IF alignment != 0 BEGIN
-            LPF ~log#add_warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%creature% : Invalid alignment value (%alignment%)~ END
         END
         SPRINT ~alignment_name~ ~none~
     END

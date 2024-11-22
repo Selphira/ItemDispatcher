@@ -2,6 +2,7 @@ DEFINE_ACTION_FUNCTION log#init
 BEGIN
     COPY ~.../inlined/blank~ ~%workspace%/log/errors.log~
     COPY ~.../inlined/blank~ ~%workspace%/log/warnings.log~
+    COPY ~.../inlined/blank~ ~%workspace%/log/debug.log~
     COPY ~.../inlined/blank~ ~%workspace%/log/dispatching.log~
 END
 
@@ -14,20 +15,27 @@ BEGIN
 	APPEND_OUTER ~%workspace%/log/%file%.log~ ~%message%~ KEEP_CRLF
 END
 
-DEFINE_DIMORPHIC_FUNCTION log#add_error
+DEFINE_DIMORPHIC_FUNCTION log#add#error
     STR_VAR
         message = ~~
 BEGIN
-    //PRINT ~ERROR: %message%~
+    PRINT ~ERROR: %message%~
     LAF ~log#add~ STR_VAR message file = ~errors~ END
 END
 
-DEFINE_DIMORPHIC_FUNCTION log#add_warning
+DEFINE_DIMORPHIC_FUNCTION log#add#warning
     STR_VAR
         message = ~~
 BEGIN
     //PRINT ~WARNING: %message%~
     LAF ~log#add~ STR_VAR message file = ~warnings~ END
+END
+
+DEFINE_DIMORPHIC_FUNCTION log#add#debug
+    STR_VAR
+        message = ~~
+BEGIN
+    LAF ~log#add~ STR_VAR message file = ~debug~ END
 END
 
 DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_add
@@ -58,4 +66,17 @@ DEFINE_DIMORPHIC_FUNCTION log#add_dispatching_creature_replace
         mod_name = ~~
 BEGIN
     LAF ~log#add~ STR_VAR message = ~%item% : Replace %item_replaced% to %creature% in %slot% slot (%mod_name%)~ END
+END
+
+DEFINE_ACTION_FUNCTION log#debug
+BEGIN
+    // Les groupes chargés
+	ACTION_PHP_EACH ~groups~ AS group_name => count BEGIN
+	    LAF ~log#add#debug~ STR_VAR message = ~Groupe : %group_name% : %count%~ END
+	END
+
+	// Les listes de données
+	ACTION_PHP_EACH ~group_count~ AS group_name => count BEGIN
+	    LAF ~log#add#debug~ STR_VAR message = ~Liste : %group_name% : %count%~ END
+	END
 END
