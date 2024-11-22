@@ -348,12 +348,12 @@ END
  * Tableau contenant le nombre de stores correspondant au filtre
  * - $group_count(~group_sto_all~)
  * - $group_count(~group_sto_purchase_%category_name%~)
- * - $group_count(~group_sto_type_%store_type%~)
+ * - $group_count(~group_sto_type_%store_type_name%~)
  *
  * Tableau contenant la liste de stores correspondant au filtre
  * - $group_sto_all(~%store%~) = 1
  * - $~group_sto_purchase_%category_name%~(~%store%~) = 1
- * - $~group_sto_type_%store_type%~(~%store%~) = 1
+ * - $~group_sto_type_%store_type_name%~(~%store%~) = 1
  */
 DEFINE_ACTION_MACRO ~data#load#stores~
 BEGIN
@@ -373,9 +373,11 @@ BEGIN
         SET $group_sto_all(~%store%~) = 1
         SET $group_count(~group_sto_all~) += 1
 
-        PATCH_IF VARIABLE_IS_SET $group_count(~group_sto_type_%store_type%~) BEGIN
-            SET $~group_sto_type_%store_type%~(~%store%~) = 1
-            SET $group_count(~group_sto_type_%store_type%~) += 1
+        SPRINT store_type_name $store_types(~%store_type%~)
+
+        PATCH_IF VARIABLE_IS_SET $group_count(~group_sto_type_%store_type_name%~) BEGIN
+            SET $~group_sto_type_%store_type_name%~(~%store%~) = 1
+            SET $group_count(~group_sto_type_%store_type_name%~) += 1
         END
 
         FOR (index = 0 ; index < purchased_count ; ++index) BEGIN
