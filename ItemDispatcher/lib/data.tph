@@ -51,6 +51,7 @@ BEGIN
     LAF ~data#load#ids~ STR_VAR file = ~wprof~    group = ~cre_proficiency~ RET_ARRAY group_count END
     LAF ~data#load#levels~ RET_ARRAY group_count END
     LAF ~data#load#locked_slots~ RET_ARRAY group_count END
+    LAF ~data#load#empty_inventory_slots~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_cre_all~) = 0
 
@@ -201,20 +202,24 @@ BEGIN
             END
 
             PATCH_IF NOT droppable BEGIN
+                INNER_PATCH_SAVE ~slot_name~ ~%slot_name%~ BEGIN REPLACE_TEXTUALLY ~[0-9]+$~ ~~ END
                 SET $~group_cre_locked_slot_%slot_name%~(~%creature%~) = 1
                 SET $group_count(~group_cre_locked_slot_%slot_name%~) += 1
             END
         END
     END
 
-    SET empty_inventory_slots = 16
+    SET empty_inventory_slot = 16
+
     FOR (offset = 1; offset <= 16; ++offset) BEGIN
         READ_SHORT (%slot_offset% + ((%offset% + 20) * 0x02)) slot
         PATCH_IF (%slot% != 0xffff) BEGIN
-            SET empty_inventory_slots -= 1
+            SET empty_inventory_slot -= 1
         END
     END
-    SET $empty_inventory_slots(~%creature%~) = empty_inventory_slots
+
+    SET $group_cre_empty_inventory_slots(~%creature%~) = empty_inventory_slot
+    SET $group_count(~group_cre_empty_inventory_slots_%empty_inventory_slot%~) += 1
 END
 
 DEFINE_PATCH_MACRO ~data#load#creatures#proficiencies~
@@ -441,7 +446,17 @@ DEFINE_ACTION_FUNCTION ~data#load#locked_slots~
         group_count
 BEGIN
     ACTION_PHP_EACH item_slots AS _ => slot_name BEGIN
+        OUTER_PATCH_SAVE ~slot_name~ ~%slot_name%~ BEGIN REPLACE_TEXTUALLY ~[0-9]+$~ ~~ END
         OUTER_SET $group_count(~group_cre_locked_slot_%slot_name%~) = 0
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~data#load#empty_inventory_slots~
+    RET_ARRAY
+        group_count
+BEGIN
+	OUTER_FOR (empty_inventory_slot = 0; empty_inventory_slot <= 16; ++empty_inventory_slot) BEGIN
+        OUTER_SET $group_count(~group_cre_empty_inventory_slots_%empty_inventory_slot%~) = 0
     END
 END
 
@@ -531,6 +546,7 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~kit~ => ~cre~
     ~gnd~ => ~cre~
     ~alg~ => ~cre~
+    ~prf~ => ~cre~
     ~gen~ => ~cre~
     ~spc~ => ~cre~
     ~lvl~ => ~cre~

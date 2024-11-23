@@ -250,13 +250,14 @@ BEGIN
                 // ~cnt~ //TODO: les conteneurs => ar2600#2.cnt
                 // ~sto~ //TODO: les magasins   => ribald.sto
                 // ~are~ //TODO: les créatures, magasins et conteneurs de la carte => ae2600.are
-                ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_kit_%target_name%~       RET_ARRAY temporary_groups END END
-                ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_general_%target_name%~   RET_ARRAY temporary_groups END END
-                ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_race_%target_name%~      RET_ARRAY temporary_groups END END
-                ~cls~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_class_%target_name%~     RET_ARRAY temporary_groups END END
-                ~spc~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_special_%target_name%~   RET_ARRAY temporary_groups END END
-                ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_gender_%target_name%~    RET_ARRAY temporary_groups END END
-                ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_alignment_%target_name%~ RET_ARRAY temporary_groups END END
+                ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_kit_%target_name%~         RET_ARRAY temporary_groups END END
+                ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_general_%target_name%~     RET_ARRAY temporary_groups END END
+                ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_race_%target_name%~        RET_ARRAY temporary_groups END END
+                ~cls~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_class_%target_name%~       RET_ARRAY temporary_groups END END
+                ~spc~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_special_%target_name%~     RET_ARRAY temporary_groups END END
+                ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_gender_%target_name%~      RET_ARRAY temporary_groups END END
+                ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_alignment_%target_name%~   RET_ARRAY temporary_groups END END
+                ~prf~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_proficiency_%target_name%~ RET_ARRAY temporary_groups END END
                 ~lvl~   BEGIN
                     PATCH_IF IS_AN_INT target_name BEGIN
                         LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_level_%target_name%~ RET_ARRAY temporary_groups END
