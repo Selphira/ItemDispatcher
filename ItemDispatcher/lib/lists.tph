@@ -248,7 +248,6 @@ BEGIN
                 // Groupes de créatures
                 ~cre~   BEGIN LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END END
                 // ~cnt~ //TODO: les conteneurs => ar2600#2.cnt
-                // ~sto~ //TODO: les magasins   => ribald.sto
                 // ~are~ //TODO: les créatures, magasins et conteneurs de la carte => ae2600.are
                 ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_kit_%target_name%~         RET_ARRAY temporary_groups END END
                 ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_general_%target_name%~     RET_ARRAY temporary_groups END END
@@ -295,6 +294,8 @@ BEGIN
                         DEFAULT LPF ~log#add#error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
                     END
                 END
+                // Groupes de magasins
+                ~sto~   BEGIN LPF ~lists#load#group.sto~ RET_ARRAY temporary_groups END END
                 // Groupes génériques et complexes
                 ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
                 ~complex~ BEGIN LPF ~log#add#error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
@@ -343,6 +344,13 @@ BEGIN
 END
 
 DEFINE_PATCH_FUNCTION ~lists#load#group.itm~
+    RET_ARRAY
+        temporary_groups
+BEGIN
+    LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END
+END
+
+DEFINE_PATCH_FUNCTION ~lists#load#group.sto~
     RET_ARRAY
         temporary_groups
 BEGIN
