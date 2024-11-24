@@ -51,9 +51,10 @@ BEGIN
     LAF ~data#load#ids~ STR_VAR file = ~gender~   group = ~cre_gender~      RET_ARRAY group_count END
     LAF ~data#load#ids~ STR_VAR file = ~alignmen~ group = ~cre_alignment~   RET_ARRAY group_count END
     LAF ~data#load#ids~ STR_VAR file = ~wprof~    group = ~cre_proficiency~ RET_ARRAY group_count END
+    LAF ~data#load#ability_scores~ RET_ARRAY group_count END
+    LAF ~data#load#empty_inventory_slots~ RET_ARRAY group_count END
     LAF ~data#load#levels~ RET_ARRAY group_count END
     LAF ~data#load#locked_slots~ RET_ARRAY group_count END
-    LAF ~data#load#empty_inventory_slots~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_cre_all~) = 0
 
@@ -70,6 +71,12 @@ END
 DEFINE_PATCH_MACRO ~data#load#creatures#data~
 BEGIN
     READ_BYTE  0x234 level
+    READ_BYTE  0x238 strength
+    READ_BYTE  0x23a intelligence
+    READ_BYTE  0x23b wisdom
+    READ_BYTE  0x23c dexterity
+    READ_BYTE  0x23d constitution
+    READ_BYTE  0x23e charisma
     READ_SHORT 0x246 kit
     READ_BYTE  0x271 general
     READ_BYTE  0x272 race
@@ -169,6 +176,24 @@ BEGIN
 
     SET $~group_cre_level_%level%~(~%creature%~) = 1
     SET $group_count(~group_cre_level_%level%~) += 1
+
+    SET $~group_cre_strength_%strength%~(~%creature%~) = 1
+    SET $group_count(~group_cre_strength_%strength%~) += 1
+
+    SET $~group_cre_intelligence_%intelligence%~(~%creature%~) = 1
+    SET $group_count(~group_cre_intelligence_%intelligence%~) += 1
+
+    SET $~group_cre_wisdom_%wisdom%~(~%creature%~) = 1
+    SET $group_count(~group_cre_wisdom_%wisdom%~) += 1
+
+    SET $~group_cre_dexterity_%dexterity%~(~%creature%~) = 1
+    SET $group_count(~group_cre_dexterity_%dexterity%~) += 1
+
+    SET $~group_cre_constitution_%constitution%~(~%creature%~) = 1
+    SET $group_count(~group_cre_constitution_%constitution%~) += 1
+
+    SET $~group_cre_charisma_%charisma%~(~%creature%~) = 1
+    SET $group_count(~group_cre_charisma_%charisma%~) += 1
 END
 
 DEFINE_PATCH_MACRO ~data#load#creatures#slots~
@@ -299,6 +324,7 @@ BEGIN
 		READ_SHORT 0x1c category
 		READ_ASCII 0x22 animation (2)
 		READ_SHORT 0x60 enchantment
+		//TODO: Créer meta-groupe avec proficiency !!
 
 		LOOKUP_IDS_SYMBOL_OF_INT category_name ~itemcat~ category
 
@@ -518,6 +544,17 @@ BEGIN
     END
 END
 
+DEFINE_ACTION_FUNCTION ~data#load#ability_scores~
+    RET_ARRAY
+        group_count
+BEGIN
+    ACTION_FOR_EACH ability_score IN ~strength~ ~intelligence~ ~wisdom~ ~dexterity~ ~constitution~ ~charisma~ BEGIN
+        OUTER_FOR (value = 1; value <= 25; ++value) BEGIN
+            OUTER_SET $group_count(~group_cre_%ability_score%_%value%~) = 0
+        END
+    END
+END
+
 DEFINE_ACTION_FUNCTION ~data#load#armor_types~
     RET_ARRAY
         group_count
@@ -597,28 +634,43 @@ BEGIN
     INNER_PATCH_SAVE ~slot_type~ ~%slot_type%~ BEGIN REPLACE_TEXTUALLY ~[0-9]+$~ ~~ END
 END
 
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~ability_scores~ BEGIN
+    ~str~ => ~strength~
+    ~int~ => ~intelligence~
+    ~wis~ => ~wisdom~
+    ~dex~ => ~dexterity~
+    ~con~ => ~constitution~
+    ~cha~ => ~charisma~
+END
+
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
-    ~cre~ => ~cre~
-    ~are~ => ~cre~
-    ~rce~ => ~cre~
-    ~cls~ => ~cre~
-    ~kit~ => ~cre~
-    ~gnd~ => ~cre~
-    ~alg~ => ~cre~
-    ~prf~ => ~cre~
-    ~gen~ => ~cre~
-    ~spc~ => ~cre~
-    ~lvl~ => ~cre~
-    ~itm~ => ~itm~
     ~2hd~ => ~itm~
+    ~alg~ => ~cre~
+    ~are~ => ~cre~
     ~arm~ => ~itm~
     ~cat~ => ~itm~
-    ~ilv~ => ~itm~
-    ~igr~ => ~itm~
-    ~slt~ => ~itm~
-    ~sto~ => ~sto~
-    ~prc~ => ~sto~
+    ~cha~ => ~cre~
+    ~cls~ => ~cre~
+    ~con~ => ~cre~
+    ~cre~ => ~cre~
+    ~dex~ => ~cre~
+    ~gen~ => ~cre~
+    ~gnd~ => ~cre~
     ~grp~ => ~~
+    ~igr~ => ~itm~
+    ~ilv~ => ~itm~
+    ~int~ => ~cre~
+    ~itm~ => ~itm~
+    ~kit~ => ~cre~
+    ~lvl~ => ~cre~
+    ~prc~ => ~sto~
+    ~prf~ => ~cre~
+    ~rce~ => ~cre~
+    ~slt~ => ~itm~
+    ~spc~ => ~cre~
+    ~sto~ => ~sto~
+    ~str~ => ~cre~
+    ~wis~ => ~cre~
 END
 
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_slots~ BEGIN

@@ -1,6 +1,13 @@
 DEFINE_ACTION_MACRO ~dispatch#run~
 BEGIN
-    PRINT ~Prépration des distributions...~ SILENT
+    PRINT ~Préparation des distributions...~ SILENT
+    LAM ~dispatch#prepare~
+    PRINT ~Distribution des objets...~ SILENT
+    LAM ~dispatch#apply~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#prepare~
+BEGIN
     COPY ~%workspace%/items.2da~ ~override~
         READ_2DA_ENTRIES_NOW ~rows~ 14
         FOR (row = 0; row < rows; ++row) BEGIN
@@ -77,15 +84,8 @@ BEGIN
             END
         END
     BUT_ONLY
-    LAF ~dispatch#save~ END
 END
 
-DEFINE_ACTION_FUNCTION ~dispatch#check_line~
-    RET
-        is_valid
-BEGIN
-END
-
-DEFINE_ACTION_FUNCTION ~dispatch#save~
+DEFINE_ACTION_MACRO ~dispatch#apply~
 BEGIN
 END

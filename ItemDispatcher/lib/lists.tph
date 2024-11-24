@@ -271,6 +271,20 @@ BEGIN
                         END
                     END
                 END
+                ~str~ ~int~ ~wis~ ~dex~ ~con~ ~cha~ BEGIN
+                    SPRINT ability_score $ability_scores(~%target_type%~)
+                    LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_%ability_score%_%target_name%~ RET_ARRAY temporary_groups END
+
+                    PATCH_IF IS_AN_INT target_name BEGIN
+                        LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_%ability_score%_%target_name%~ RET_ARRAY temporary_groups END
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#range~ INT_VAR min = 1 max = 25 STR_VAR value = ~%target_name%~ RET min max END
+                        FOR (level = min; level <= max; ++level) BEGIN
+                            LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_%ability_score%_%level%~ RET_ARRAY temporary_groups END
+                        END
+                    END
+                END
                 // Groupes d'objets
                 ~itm~   BEGIN LPF ~lists#load#group.itm~ RET_ARRAY temporary_groups END END
                 ~ilv~   BEGIN
