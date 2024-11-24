@@ -1,4 +1,6 @@
 DEFINE_PATCH_FUNCTION ~tool#quantity~
+    INT_VAR
+        default = 1
     STR_VAR
         value = ~~
     RET
@@ -6,13 +8,13 @@ DEFINE_PATCH_FUNCTION ~tool#quantity~
         quantity
 BEGIN
     SET is_percent = 0
-    SET quantity = 1
+    SET quantity = default
 
     PATCH_IF IS_AN_INT value AND value > 0 BEGIN
         SET quantity = value
     END
     ELSE PATCH_IF ~%value%~ STRING_EQUAL ~-~ BEGIN
-        SET quantity = 1
+        SET quantity = default
     END
     ELSE PATCH_IF ~%value%~ STRING_EQUAL ~*~ BEGIN
         SET is_percent = 1
@@ -260,6 +262,9 @@ BEGIN
 END
 
 DEFINE_DIMORPHIC_FUNCTION ~tool#array#intersect~
+    INT_VAR
+        count_array = 0
+        count_array2 = 0
     STR_VAR
         array = ~~
         array2 = ~~
@@ -270,6 +275,12 @@ DEFINE_DIMORPHIC_FUNCTION ~tool#array#intersect~
 BEGIN
     OUTER_SET count = 0
     ACTION_CLEAR_ARRAY new_array
+
+    ACTION_IF count_array > count_array2 BEGIN
+        OUTER_SPRINT tmp ~%array%~
+        OUTER_SPRINT array ~%array2%~
+        OUTER_SPRINT array2 ~%tmp%~
+    END
 
     ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
         ACTION_IF VARIABLE_IS_SET $~%array2%~(~%key%~) BEGIN

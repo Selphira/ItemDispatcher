@@ -8,6 +8,7 @@ OUTER_TEXT_SPRINT ~regex_2da_files~ ~^.*\.2da$~
  */
 DEFINE_ACTION_FUNCTION ~lists#merge~
 BEGIN
+    PRINT ~Analyse des dossiers des mods...~ SILENT
     ACTION_CLEAR_ARRAY ~folders~
 	GET_DIRECTORY_ARRAY ~folders~ ~.~ ~%regex_folders%~
 	ACTION_PHP_EACH ~folders~ AS _ => folder BEGIN
@@ -84,7 +85,7 @@ BEGIN
         FOR (row = 1; row < rows; ++row) BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row  0 item_quantity
             READ_2DA_ENTRY_FORMER ~rows~ row  1 item_per_target
-            READ_2DA_ENTRY_FORMER ~rows~ row  2 max_stack_size
+            READ_2DA_ENTRY_FORMER ~rows~ row  2 stack_size
             READ_2DA_ENTRY_FORMER ~rows~ row  3 item
             READ_2DA_ENTRY_FORMER ~rows~ row  4 target_quantity
             READ_2DA_ENTRY_FORMER ~rows~ row  5 target
@@ -96,7 +97,7 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row 11 droppable
             READ_2DA_ENTRY_FORMER ~rows~ row 12 chance
 
-            SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%max_stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
+            SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END
@@ -162,6 +163,7 @@ END
 
 DEFINE_ACTION_MACRO ~lists#load~
 BEGIN
+    PRINT ~Chargement des listes...~ SILENT
 	ACTION_DEFINE_ARRAY ~groups~ BEGIN END
 
     LAM ~lists#load#items~
@@ -257,6 +259,7 @@ BEGIN
                 ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_gender_%target_name%~      RET_ARRAY temporary_groups END END
                 ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_alignment_%target_name%~   RET_ARRAY temporary_groups END END
                 ~prf~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_proficiency_%target_name%~ RET_ARRAY temporary_groups END END
+                ~are~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_are_%target_name%_cre~         RET_ARRAY temporary_groups END END
                 ~lvl~   BEGIN
                     PATCH_IF IS_AN_INT target_name BEGIN
                         LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_level_%target_name%~ RET_ARRAY temporary_groups END

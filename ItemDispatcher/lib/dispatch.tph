@@ -1,12 +1,13 @@
 DEFINE_ACTION_MACRO ~dispatch#run~
 BEGIN
+    PRINT ~Prépration des distributions...~ SILENT
     COPY ~%workspace%/items.2da~ ~override~
         READ_2DA_ENTRIES_NOW ~rows~ 14
         FOR (row = 0; row < rows; ++row) BEGIN
             PATCH_TRY
                 READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
                 READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item_per_target
-                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_max_stack_size
+                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_stack_size
                 READ_2DA_ENTRY_FORMER ~rows~ row  3 row_item
                 READ_2DA_ENTRY_FORMER ~rows~ row  4 row_target_quantity
                 READ_2DA_ENTRY_FORMER ~rows~ row  5 row_target
@@ -23,54 +24,52 @@ BEGIN
                 CLEAR_ARRAY difficulties
                 CLEAR_ARRAY targets
 
-                LPF ~tool#integer~ INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
-                // TODO: Pour le cas où il y aurait plusieurs objets à dispatcher pour une même ligne, la chance devrait s'activer pour chacun d'eux !
-                //       Ex: On veut dispatcher tous les parchemins de l'Interplan, "* interplan-scrolls.grp", chaque parchemin aura x pourcentage de chance d'être pris en compte
+                LPF ~tool#integer~  INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
+                LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~   RET item_quantity_is_percent = is_percent   item_quantity = quantity END
+                // TODO: lire la source
 
-                PATCH_IF RANDOM(1 100) <= chance BEGIN
-                    LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
-                    LPF ~tool#quantity~ STR_VAR value = ~%row_item_per_target%~ RET item_per_target_is_percent = is_percent item_per_target = quantity END
-                    LPF ~tool#quantity~ STR_VAR value = ~%row_max_stack_size%~ RET max_stack_size_is_percent = is_percent max_stack_size = quantity END
-                    LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
-                    LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
-                    LPF ~tool#boolean~ INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
-                    LPF ~tool#boolean~ INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
-                    LPF ~tool#values~ INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~ RET count_chapter = count RET_ARRAY chapters = values END
-                    LPF ~tool#values~ INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
-                    // TODO: lire la source
+                LPF ~selector#item#get~ INT_VAR count = item_quantity count_is_percent = item_quantity_is_percent STR_VAR target = ~%row_item%~ RET count_items RET_ARRAY items END
 
-                    // TODO: Si l'objet est aléatoire et que le nombre de cible est plus grand que 1
-                    //       Boucler afin d'avoir potentiellement un objet différent par cible ! Et évidemment sélectionner une cible à la fois
-                    //       Faire en sorte qu'à l'itération suivante, la même cible ne puisse pas être ressélectionnée
-                    //       Arrêter si plus aucune cible disponible pour le nombre voulu...
+                PATCH_PHP_EACH ~items~ AS _ => item BEGIN
+                    PATCH_IF RANDOM(1 100) <= chance BEGIN
+                        LPF ~tool#boolean~        INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
+                        LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
+                        LPF ~selector#target#get~ INT_VAR count = target_quantity count_is_percent = target_quantity_is_percent item_is_equipable = equipable STR_VAR target = ~%row_target%~ item RET count_targets RET_ARRAY targets END
 
-                    LPF ~selector#item#get~ STR_VAR target = ~%row_item%~ RET item item_is_random = is_random END
-                    LPF ~selector#target#get~ INT_VAR count = ~%target_quantity%~ item_is_equipable = equipable STR_VAR target = ~%row_target%~ item RET target_is_random = is_random RET_ARRAY targets END
-
-                    // - Si l'objet est distribué de manière non aleatoire, ne pas tenir compte des restrictions d'équipement.
-                    // - Créer un meta-groupe contenant les créatures qui ne peuvent pas équiper d'objets. par defaut, animaux, plantes, dragons, spectateur
-                    // - Même si pas aléatoire, lorsqu'on équipe, s'assurer d'équiper un objet que la créature peut porter, et aussi, peut manier efficacement
-
-                    // Déterminer quel objet devra être distribué, utile si l'objet est aléatoire (Exemple: sword.wpn&3.lvl (une arme de type épée enchantée en +3))
-                    //   Dans un premier temps, uniquement les fichier .itm, mais prévoir pour la suite
-                    // Déterminer les cibles, si "Equipable" à true, si la cible choisie est une créature, l'équiper. si c'est un magasin, rien de spécial
-                    // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
-                    // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
-                    //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
-
-                    // Use INV instead of INVn: WeiDU will place your item in the first empty INV slot.
-
-                    PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%~ BEGIN
-                        LPF ~log#add#warning~ STR_VAR message = ~%item% : Item doesn't exist, line ignored (%mod_name%)~ END
-                    END
-                    ELSE BEGIN
-                        PATCH_PHP_EACH targets AS _ => target BEGIN
-                            PATCH_PRINT "Dispatching de %item% vers %target%"
+                        INNER_ACTION BEGIN
+                            COPY_EXISTING ~%item%~ ~override~
+                                READ_SHORT 0x38 max_stack_size
+                            BUT_ONLY
                         END
-                        LPF ~selector#target#is_complex~ STR_VAR target RET is_complex_target = is_complex END
-                        // TODO: Placer toutes les distributions validées dans des tableaux
-                        // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
-                        // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+
+                        PATCH_PHP_EACH targets AS _ => target BEGIN
+                            LPF ~tool#quantity~ STR_VAR value = ~%row_item_per_target%~ RET item_per_target_is_percent = is_percent item_per_target = quantity END
+                            LPF ~tool#quantity~ STR_VAR value = ~%row_stack_size%~  RET stack_size_is_percent = is_percent  stack_size = quantity END
+                            LPF ~tool#boolean~  INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
+                            LPF ~tool#boolean~  INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
+                            LPF ~tool#values~   INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~   RET count_chapter = count    RET_ARRAY chapters = values END
+                            LPF ~tool#values~   INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
+
+                            PATCH_IF stack_size_is_percent == 0 AND max_stack_size < stack_size BEGIN
+                                SET stack_size = max_stack_size
+                            END
+                            PATCH_IF stack_size < 1 BEGIN
+                                SET stack_size = 1
+                            END
+
+                            // TODO: Si un même objet est distribué plusieurs fois à la même cible, vérifier ses stacks
+                            //       Eventuellement additionner les stack_size pour limiter le nombre de piles données
+                            // Ex: On donne 3 piles de flèche (limité à 80 stacks de base)
+                            //     - Pile 1 : 60 stacks
+                            //     - Pile 2 : 20 stacks
+                            //     - Pile 3 : 20 stacks
+                            //     Resultat final : 1 pile de 80 et 1 pile de 20
+
+                            PATCH_PRINT "Distribution de %item_per_target% pile(s) de %stack_size% de %item% vers %target% (equipable : %equipable% - volable : %stealable% - droppable : %droppable%)"
+                            // TODO: Placer toutes les distributions validées dans des tableaux
+                            // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
+                            // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
+                        END
                     END
                 END
             WITH
@@ -78,7 +77,7 @@ BEGIN
             END
         END
     BUT_ONLY
-    //LAF ~dispatch#save~ END
+    LAF ~dispatch#save~ END
 END
 
 DEFINE_ACTION_FUNCTION ~dispatch#check_line~
