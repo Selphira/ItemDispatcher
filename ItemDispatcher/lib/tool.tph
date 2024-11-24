@@ -276,16 +276,18 @@ BEGIN
     OUTER_SET count = 0
     ACTION_CLEAR_ARRAY new_array
 
-    ACTION_IF count_array > count_array2 BEGIN
-        OUTER_SPRINT tmp ~%array%~
-        OUTER_SPRINT array ~%array2%~
-        OUTER_SPRINT array2 ~%tmp%~
-    END
+    ACTION_IF count_array > 0 AND count_array2 > 0 BEGIN
+        ACTION_IF count_array > count_array2 BEGIN
+            OUTER_SPRINT tmp ~%array%~
+            OUTER_SPRINT array ~%array2%~
+            OUTER_SPRINT array2 ~%tmp%~
+        END
 
-    ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
-        ACTION_IF VARIABLE_IS_SET $~%array2%~(~%key%~) BEGIN
-            OUTER_SPRINT $new_array(~%key%~) ~%value%~
-            OUTER_SET count += 1
+        ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
+            ACTION_IF VARIABLE_IS_SET $~%array2%~(~%key%~) BEGIN
+                OUTER_SPRINT $new_array(~%key%~) ~%value%~
+                OUTER_SET count += 1
+            END
         END
     END
 END
