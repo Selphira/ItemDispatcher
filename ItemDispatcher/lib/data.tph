@@ -6,6 +6,8 @@ BEGIN
     LAM ~data#load#items~
     PRINT ~Chargement des magasins...~ SILENT
     LAM ~data#load#stores~
+    PRINT ~Chargement des zones...~ SILENT
+    LAM ~data#load#areas~
 END
 
 /*
@@ -407,6 +409,62 @@ BEGIN
 	BUT_ONLY
 END
 
+/*
+ * Tableau contenant le nombre de créatures de la zone
+ * - $group_count(~group_are_%area%_cre~)
+ *
+ * Tableau contenant la liste des créatures de la zone
+ * - $group_are_%area%_cre(~%creature%~) = 1
+ */
+DEFINE_ACTION_MACRO ~data#load#areas~
+BEGIN
+	COPY_EXISTING_REGEXP GLOB ~^.+\.are$~ ~override~
+	    SPRINT ~area~ ~%SOURCE_RES%~
+	    TO_LOWER area
+
+        SET $group_count(~group_are_%area%_cre~) = 0
+
+        // Les acteurs
+	    GET_OFFSET_ARRAY creature_offsets ARE_V10_ACTORS
+        PHP_EACH creature_offsets AS actor_num => creature_offset BEGIN
+            READ_ASCII creature_offset + 0x80 creature
+	        TO_LOWER creature
+	        SPRINT creature ~%creature%.cre~
+
+            PATCH_IF NOT VARIABLE_IS_SET $~group_are_%area%_cre~(~%creature%~) BEGIN
+                SET $~group_are_%area%_cre~(~%creature%~) = 1
+                SET $group_count(~group_are_%area%_cre~) += 1
+            END
+        END
+
+        // Les points d'apparition
+	    GET_OFFSET_ARRAY spawn_offsets ARE_V10_SPAWN_POINTS
+        PHP_EACH spawn_offsets AS spawn_num => spawn_offset BEGIN
+            FOR (index = 0; index < 10; ++index) BEGIN
+                READ_ASCII spawn_offset + 0x24 + (index * 8) creature
+                PATCH_IF STRING_LENGTH ~%creature%~ > 0 BEGIN
+	                TO_LOWER creature
+	                SPRINT creature ~%creature%.cre~
+                    PATCH_IF NOT VARIABLE_IS_SET $~group_are_%area%_cre~(~%creature%~) BEGIN
+                        SET $~group_are_%area%_cre~(~%creature%~) = 1
+                        SET $group_count(~group_are_%area%_cre~) += 1
+                    END
+                END
+            END
+        END
+
+        // Les conteneurs
+		GET_OFFSET_ARRAY container_offsets ARE_V10_CONTAINERS
+		PHP_EACH container_offsets AS container_num => container_offset BEGIN
+			//READ_ASCII cont_off cont_name
+			GET_OFFSET_ARRAY2 item_offsets container_offset ARE_V10_ITEMS
+            PHP_EACH item_offsets AS item_num => item_offset BEGIN
+                // TODO: Charger les conteneurs
+            END
+        END
+	BUT_ONLY
+END
+
 DEFINE_ACTION_FUNCTION ~data#load#ids~
     STR_VAR
         file = ~~
@@ -541,6 +599,7 @@ END
 
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~cre~ => ~cre~
+    ~are~ => ~cre~
     ~rce~ => ~cre~
     ~cls~ => ~cre~
     ~kit~ => ~cre~
