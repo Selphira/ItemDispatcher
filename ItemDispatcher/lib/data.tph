@@ -290,6 +290,7 @@ END
  * - $group_count(~group_itm_magical~)
  * - $group_count(~group_itm_movable~)
  * - $group_count(~group_itm_slot_%slot_type%~)
+ * - $group_count(~group_itm_stackable~)
  * - $group_count(~group_itm_two_handed~)
  *
  * Tableau contenant la liste d'objets correspondant au filtre
@@ -301,6 +302,7 @@ END
  * - $group_itm_cursed(~%item%~) = 1
  * - $group_itm_magical(~%item%~) = 1
  * - $group_itm_movable(~%item%~) = 1
+ * - $group_itm_stackable(~%item%~) = 1
  * - $group_itm_two_handed(~%item%~) = 1
  */
 DEFINE_ACTION_MACRO ~data#load#items~
@@ -314,6 +316,7 @@ BEGIN
     OUTER_SET $group_count(~group_itm_cursed~)     = 0
     OUTER_SET $group_count(~group_itm_magical~)    = 0
     OUTER_SET $group_count(~group_itm_movable~)    = 0
+    OUTER_SET $group_count(~group_itm_stackable~)  = 0
     OUTER_SET $group_count(~group_itm_two_handed~) = 0
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.itm$~ ~override~
@@ -323,6 +326,7 @@ BEGIN
 		READ_LONG  0x18 flags
 		READ_SHORT 0x1c category
 		READ_ASCII 0x22 animation (2)
+		READ_SHORT 0x38 stack_size
 		READ_SHORT 0x60 enchantment
 		//TODO: Créer meta-groupe avec proficiency !!
 
@@ -338,6 +342,7 @@ BEGIN
 		SET movable   = (flags BAND BIT2) != 0
 		SET cursed    = (flags BAND BIT4) != 0
 		SET magical   = (flags BAND BIT6) != 0
+		SET stackable = stack_size > 1
 
         SET $group_itm_all(~%item%~) = 1
         SET $group_count(~group_itm_all~) += 1
@@ -370,6 +375,11 @@ BEGIN
         PATCH_IF cursed == 1 BEGIN
             SET $group_itm_cursed(~%item%~) = 1
             SET $group_count(~group_itm_cursed~) += 1
+        END
+
+        PATCH_IF stackable == 1 BEGIN
+            SET $group_itm_stackable(~%item%~) = 1
+            SET $group_count(~group_itm_stackable~) += 1
         END
 
         PATCH_IF enchantment >= 0 AND enchantment <= 6 BEGIN
@@ -634,6 +644,19 @@ BEGIN
     INNER_PATCH_SAVE ~slot_type~ ~%slot_type%~ BEGIN REPLACE_TEXTUALLY ~[0-9]+$~ ~~ END
 END
 
+DEFINE_PATCH_FUNCTION ~data#load#cre_item_slot~
+    INT_VAR
+        category = 0
+    RET
+        cre_item_slot
+BEGIN
+    SPRINT cre_item_slot ~~
+    PATCH_IF VARIABLE_IS_SET $item_category_to_item_slot(~%category%~) BEGIN
+        SET index = $item_category_to_item_slot(~%category%~)
+        SPRINT cre_item_slot $cre_item_slots(~%index%~)
+    END
+END
+
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~ability_scores~ BEGIN
     ~str~ => ~strength~
     ~int~ => ~intelligence~
@@ -695,6 +718,30 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_slots~ BEGIN
     18 => ~quick_item1~
     19 => ~quick_item2~
     20 => ~quick_item3~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~cre_item_slots~ BEGIN
+     0 => ~helmet~
+     1 => ~armor~
+     2 => ~shield~
+     3 => ~gloves~
+     4 => ~ring~
+     5 => ~ring~
+     6 => ~amulet~
+     7 => ~belt~
+     8 => ~boots~
+     9 => ~weapon~
+    10 => ~weapon~
+    11 => ~weapon~
+    12 => ~weapon~
+    13 => ~quiver~
+    14 => ~quiver~
+    15 => ~quiver~
+    16 => ~quiver~
+    17 => ~cloak~
+    18 => ~qitem~
+    19 => ~qitem~
+    20 => ~qitem~
 END
 
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~store_types~ BEGIN
