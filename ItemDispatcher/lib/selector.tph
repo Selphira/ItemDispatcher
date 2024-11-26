@@ -452,9 +452,10 @@ BEGIN
             ~igr~ BEGIN
                 PATCH_MATCH ~%group_name%~
                 WITH
-                    ~cursed~ BEGIN SPRINT group_name ~group_itm_cursed~ END
-                    ~magical~ BEGIN SPRINT group_name ~group_itm_magical~ END
-                    ~movable~ BEGIN SPRINT group_name ~group_itm_movable~ END
+                    ~cursed~     BEGIN SPRINT group_name ~group_itm_cursed~ END
+                    ~magical~    BEGIN SPRINT group_name ~group_itm_magical~ END
+                    ~movable~    BEGIN SPRINT group_name ~group_itm_movable~ END
+                    ~stackable~  BEGIN SPRINT group_name ~group_itm_stackable~ END
                     ~two_handed~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
                     DEFAULT
                 END

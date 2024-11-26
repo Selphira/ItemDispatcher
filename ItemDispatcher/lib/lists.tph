@@ -307,6 +307,7 @@ BEGIN
                         ~cursed~     BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_cursed~     RET_ARRAY temporary_groups END END
                         ~magical~    BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_magical~    RET_ARRAY temporary_groups END END
                         ~movable~    BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_movable~    RET_ARRAY temporary_groups END END
+                        ~stackable~  BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_stackable~  RET_ARRAY temporary_groups END END
                         ~two_handed~ BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_two_handed~ RET_ARRAY temporary_groups END END
                         DEFAULT LPF ~log#add#error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END
                     END
