@@ -120,7 +120,7 @@ BEGIN
     ELSE BEGIN
         LPF ~tool#array#clone~ STR_VAR array = ~group_cre_all~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
         LPF ~tool#array#clone~ STR_VAR array = ~group_sto_all~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
-        LPF ~tool#array#clone~ STR_VAR array = ~group_cnt_all~ RET count_sto_targets = count RET_ARRAY cnt_targets = new_array END
+        LPF ~tool#array#clone~ STR_VAR array = ~group_cnt_all~ RET count_cnt_targets = count RET_ARRAY cnt_targets = new_array END
 
         LPM ~selector#target#filter~
 
@@ -207,18 +207,20 @@ BEGIN
             PATCH_IF item_is_equipable == 1 BEGIN
                 // On ne garde que les créatures dont l'emplacement de l'objet n'est pas rempli par un objet non droppable
                 LPF ~data#load#slot_type~ INT_VAR category RET slot_type END
-                LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_locked_slot_%slot_type%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_locked_slot_%slot_type%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                PATCH_IF STRING_LENGTH ~%slot_type%~ > 0 BEGIN
+                    LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_locked_slot_%slot_type%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_locked_slot_%slot_type%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
 
-                // On ne garde que les créatures humanoïdes
-                LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_general_humanoid~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_general_humanoid~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    // On ne garde que les créatures humanoïdes
+                    LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_general_humanoid~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_general_humanoid~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
 
-                PATCH_IF ~%slot_type%~ STRING_EQUAL ~weapon~ BEGIN
-                    // On ne garde que les créatures qui ont une compétence martiale pour l'arme sélectionnée ou une compétence martiale liée au nombre de main nécessaire pour manier l'arme
-                    LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $groups(~cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
-                END
-                ELSE PATCH_IF ~%slot_type%~ STRING_EQUAL ~shield~ BEGIN
-                    // On ne garde que les créatures qui ont une compétence martiale dans épée et bouclier
-                    LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_proficiency_proficiencyswordandshield~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_proficiency_proficiencyswordandshield~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    PATCH_IF ~%slot_type%~ STRING_EQUAL ~weapon~ BEGIN
+                        // On ne garde que les créatures qui ont une compétence martiale pour l'arme sélectionnée ou une compétence martiale liée au nombre de main nécessaire pour manier l'arme
+                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $groups(~cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    END
+                    ELSE PATCH_IF ~%slot_type%~ STRING_EQUAL ~shield~ BEGIN
+                        // On ne garde que les créatures qui ont une compétence martiale dans épée et bouclier
+                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_proficiency_proficiencyswordandshield~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_proficiency_proficiencyswordandshield~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    END
                 END
             END
             ELSE BEGIN
@@ -389,7 +391,6 @@ BEGIN
             ~spc~ BEGIN SPRINT group_name ~group_cre_specific_%group_name%~ END
             ~alg~ BEGIN SPRINT group_name ~group_cre_alignment_%group_name%~ END
             ~prf~ BEGIN SPRINT group_name ~group_cre_proficiency_%group_name%~ END
-            ~are~ BEGIN SPRINT group_name ~group_are_%group_name%_cre~ END
             ~lvl~ BEGIN
                 PATCH_IF IS_AN_INT group_name BEGIN
                     SPRINT group_name ~group_cre_level_%group_name%~
@@ -450,17 +451,24 @@ BEGIN
             ~stt~ BEGIN SPRINT group_name ~group_sto_type_%group_name%~ END
 
             ~igr~ BEGIN
-                PATCH_MATCH ~%group_name%~
-                WITH
-                    ~cursed~     BEGIN SPRINT group_name ~group_itm_cursed~ END
-                    ~magical~    BEGIN SPRINT group_name ~group_itm_magical~ END
-                    ~movable~    BEGIN SPRINT group_name ~group_itm_movable~ END
-                    ~stackable~  BEGIN SPRINT group_name ~group_itm_stackable~ END
-                    ~two_handed~ BEGIN SPRINT group_name ~group_itm_two_handed~ END
-                    DEFAULT
+                PATCH_IF ~%group_name%~ STRING_EQUAL ~cursed~ BEGIN
+                    SPRINT group_name ~group_itm_cursed~
+                END
+                ELSE PATCH_IF ~%group_name%~ STRING_EQUAL ~magical~ BEGIN
+                    SPRINT group_name ~group_itm_magical~
+                END
+                ELSE PATCH_IF ~%group_name%~ STRING_EQUAL ~movable~ BEGIN
+                    SPRINT group_name ~group_itm_movable~
+                END
+                ELSE PATCH_IF ~%group_name%~ STRING_EQUAL ~stackable~ BEGIN
+                    SPRINT group_name ~group_itm_stackable~
+                END
+                ELSE PATCH_IF ~%group_name%~ STRING_EQUAL ~two_handed~ BEGIN
+                    SPRINT group_name ~group_itm_two_handed~
                 END
             END
 
+            ~are~ BEGIN SPRINT group_name ~group_are_%group_name%~ END
             ~grp~ BEGIN SPRINT group_name ~group_%group_name%~ END
             DEFAULT
         END

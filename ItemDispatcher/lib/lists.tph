@@ -250,7 +250,6 @@ BEGIN
                 // Groupes de créatures
                 ~cre~   BEGIN LPF ~lists#load#group.cre~ RET_ARRAY temporary_groups END END
                 // ~cnt~ //TODO: les conteneurs => ar2600#2.cnt
-                // ~are~ //TODO: les créatures, magasins et conteneurs de la carte => ae2600.are
                 ~kit~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_kit_%target_name%~         RET_ARRAY temporary_groups END END
                 ~gen~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_general_%target_name%~     RET_ARRAY temporary_groups END END
                 ~rce~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_race_%target_name%~        RET_ARRAY temporary_groups END END
@@ -259,7 +258,6 @@ BEGIN
                 ~gnd~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_gender_%target_name%~      RET_ARRAY temporary_groups END END
                 ~alg~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_alignment_%target_name%~   RET_ARRAY temporary_groups END END
                 ~prf~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_proficiency_%target_name%~ RET_ARRAY temporary_groups END END
-                ~are~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_are_%target_name%_cre~         RET_ARRAY temporary_groups END END
                 ~lvl~   BEGIN
                     PATCH_IF IS_AN_INT target_name BEGIN
                         LPF ~lists#load#group.basic~ STR_VAR group = ~group_cre_level_%target_name%~ RET_ARRAY temporary_groups END
@@ -315,6 +313,7 @@ BEGIN
                 // Groupes de magasins
                 ~sto~   BEGIN LPF ~lists#load#group.sto~ RET_ARRAY temporary_groups END END
                 // Groupes génériques et complexes
+                ~are~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_are_%target_name%~ RET_ARRAY temporary_groups END END
                 ~grp~   BEGIN LPF ~lists#load#group.grp~ RET_ARRAY temporary_groups END END
                 ~complex~ BEGIN LPF ~log#add#error~ STR_VAR message = ~%target% : Complex target not yet supported %SOURCE_RES% (%mod_name%)~ END END
                 DEFAULT LPF ~log#add#error~ STR_VAR message = ~%target% : Invalid target in group %SOURCE_RES% (%mod_name%)~ END

@@ -84,6 +84,7 @@ BEGIN
     READ_BYTE  0x274 specific
     READ_BYTE  0x275 gender
     READ_BYTE  0x27b alignment
+    READ_ASCII 0x2cc dialog
 
     LOOKUP_IDS_SYMBOL_OF_INT kit_name ~kit~ kit
     LOOKUP_IDS_SYMBOL_OF_INT general_name ~general~ general
@@ -100,6 +101,7 @@ BEGIN
     TO_LOWER specific_name
     TO_LOWER gender_name
     TO_LOWER alignment_name
+    TO_LOWER dialog
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_kit_%kit_name%~) BEGIN
         PATCH_IF kit != 0 BEGIN
@@ -194,6 +196,9 @@ BEGIN
 
     SET $~group_cre_charisma_%charisma%~(~%creature%~) = 1
     SET $group_count(~group_cre_charisma_%charisma%~) += 1
+
+    SET $~cre_dialog_%dialog%~(~%creature%~) = 1
+    SET $~dlg_creature_%creature%~(~%dialog%~) = 1
 END
 
 DEFINE_PATCH_MACRO ~data#load#creatures#slots~
@@ -438,19 +443,55 @@ BEGIN
             TO_LOWER category_name
 
             PATCH_IF VARIABLE_IS_SET $group_count(~group_sto_purchase_%category_name%~) BEGIN
-                SET $~group_sto_purchase_%category_name%~(~%item%~) = 1
+                SET $~group_sto_purchase_%category_name%~(~%store%~) = 1
                 SET $group_count(~group_sto_purchase_%category_name%~) += 1
             END
         END
+	BUT_ONLY
+
+	COPY_EXISTING_REGEXP GLOB ~^.+\.dlg~ ~override~
+        COUNT_REGEXP_INSTANCES ~StartStore("\([^"]+\)"~ count_stores
+	    PATCH_IF count_stores > 0 BEGIN
+            SPRINT ~dialog~ ~%SOURCE_RES%~
+
+            TO_LOWER dialog
+
+            READ_LONG 0x28 actions_offsets
+            READ_LONG 0x2c actions_number
+            FOR (index = actions_number - 1; index >= 0; --index) BEGIN
+                SET action_offset = actions_offsets + (index * 8)
+                READ_LONG action_offset scripts_offsets
+                READ_LONG (action_offset + 4) scripts_length
+                READ_ASCII scripts_offsets script (scripts_length)
+
+                SET pos = INDEX(CASE_SENSITIVE EXACT_MATCH ~StartStore(~ ~%script%~)
+                PATCH_IF (pos >= 0) BEGIN
+                    SET pos2 = INDEX(~[,)]~ ~%script%~ pos)
+                    PATCH_IF (pos2 > pos) BEGIN
+                        LPF SUBSTRING INT_VAR start = pos length = pos2 - pos STR_VAR string = EVAL ~%script%~ RET substring END
+                        INNER_PATCH_SAVE store ~%substring%~ BEGIN
+                            REPLACE_TEXTUALLY ~StartStore("\([^"]+\)".*~ ~\1~
+                        END
+                        PHP_EACH ~cre_dialog_%dialog%~ AS creature => _ BEGIN
+                            SET $~sto_creature_%creature%~(~%store%.sto~) = 1
+                        END
+                    END
+                END
+            END
+	    END
 	BUT_ONLY
 END
 
 /*
  * Tableau contenant le nombre de créatures de la zone
  * - $group_count(~group_are_%area%_cre~)
+ * Tableau contenant le nombre de magasins de la zone
+ * - $group_count(~group_are_%area%_sto~)
  *
  * Tableau contenant la liste des créatures de la zone
  * - $group_are_%area%_cre(~%creature%~) = 1
+ * Tableau contenant la liste des magasins de la zone
+ * - $group_are_%area%_sto(~%store%~) = 1
  */
 DEFINE_ACTION_MACRO ~data#load#areas~
 BEGIN
@@ -458,7 +499,9 @@ BEGIN
 	    SPRINT ~area~ ~%SOURCE_RES%~
 	    TO_LOWER area
 
+        SET $group_count(~group_are_%area%~) = 0
         SET $group_count(~group_are_%area%_cre~) = 0
+        SET $group_count(~group_are_%area%_sto~) = 0
 
         // Les acteurs
 	    GET_OFFSET_ARRAY creature_offsets ARE_V10_ACTORS
@@ -470,6 +513,8 @@ BEGIN
             PATCH_IF NOT VARIABLE_IS_SET $~group_are_%area%_cre~(~%creature%~) BEGIN
                 SET $~group_are_%area%_cre~(~%creature%~) = 1
                 SET $group_count(~group_are_%area%_cre~) += 1
+                SET $~group_are_%area%~(~%creature%~) = 1
+                SET $group_count(~group_are_%area%~) += 1
             END
         END
 
@@ -484,7 +529,21 @@ BEGIN
                     PATCH_IF NOT VARIABLE_IS_SET $~group_are_%area%_cre~(~%creature%~) BEGIN
                         SET $~group_are_%area%_cre~(~%creature%~) = 1
                         SET $group_count(~group_are_%area%_cre~) += 1
+                        SET $~group_are_%area%~(~%creature%~) = 1
+                        SET $group_count(~group_are_%area%~) += 1
                     END
+                END
+            END
+        END
+
+        // Les magasins
+        PHP_EACH ~group_are_%area%_cre~ AS creature => _ BEGIN
+            PHP_EACH ~sto_creature_%creature%~ AS store => _ BEGIN
+                PATCH_IF NOT VARIABLE_IS_SET $~group_are_%area%_sto~(~%store%~) BEGIN
+                    SET $~group_are_%area%_sto~(~%store%~) = 1
+                    SET $group_count(~group_are_%area%_sto~) += 1
+                    SET $~group_are_%area%~(~%store%~) = 1
+                    SET $group_count(~group_are_%area%~) += 1
                 END
             END
         END
@@ -669,7 +728,7 @@ END
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~2hd~ => ~itm~
     ~alg~ => ~cre~
-    ~are~ => ~cre~
+    ~are~ => ~~
     ~arm~ => ~itm~
     ~cat~ => ~itm~
     ~cha~ => ~cre~
