@@ -98,6 +98,9 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row 12 droppable
             READ_2DA_ENTRY_FORMER ~rows~ row 13 chance
 
+            TO_LOWER item
+            TO_LOWER target
+
             SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%time_of_day%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
