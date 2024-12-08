@@ -11,22 +11,61 @@
 ItemDispatcher est un mod pour Baldur's Gate 2 conçu pour permettre la distribution d'objets de manière flexible et personnalisée. Grâce à ce mod, vous pouvez spécifier des cibles, des types d'objets et des conditions précises pour la distribution, assurant un gameplay dynamique et adapté à vos besoins.
 
 ## Options de distribution
-### Quantité d'objets distribués
 
-Cette option détermine le nombre d'objets attribués à chaque cible sélectionnée. Elle est particulièrement utile pour distribuer des objets empilables, tels que des flèches.
+### Quantité d'objets à sélectionner
 
-- Si l'objet n'est pas empilable ou si la quantité dépasse la capacité d'une pile, plusieurs piles seront ajoutées à la cible.
-- Si la cible est une créature, le nombre de piles ne peut excéder le nombre d'emplacements libres.
-- Si l'objet doit être équipé par une créature, une seule pile sera générée.
-- Toute quantité invalide est convertie automatiquement en une quantité de 1.
+Cette option détermine combien d'objets différents seront choisis aléatoirement parmi les objets éligibles définis par le filtre.
+
+- Cette option s'applique uniquement lorsque les objets à distribuer sont déterminés de manière aléatoire.
+- Si cette option n'est pas spécifiée, un seul objet sera sélectionné par défaut.
+- Les objets sélectionnés sont ensuite distribués selon les paramètres définis, tels que la **quantité par cible**, les **piles** et les **cibles**.
 
 #### Exemples
 
 | Exemple | Code |
 | ------- | ---- |
-| 1 objet | `-` ou `1` |
-| 3 objets | `3` |
-| Entre 2 et 6 objets | `2-6` |
+| 1 objet aléatoire | `-` ou `1` |
+| 3 objets aléatoires | `3` |
+| Entre 2 et 5 objets aléatoires | `2-5` |
+| Tous les objets éligibles | `*` |
+
+### Quantité de piles distribuées par cible
+
+Cette option permet de définir combien de **piles** d’un objet seront distribuées à chaque cible sélectionnée.  
+
+- Une pile représente un ensemble d’unités empilées, jusqu’à la capacité maximale d’empilement définie par l’objet.  
+- Si la cible est une créature qui ne dispose pas d’assez d’emplacements libres dans son inventaire, le nombre de piles sera réduit en fonction de l’espace disponible.
+- Dans le cas où la quantité est définie aléatoirement (par exemple, `2-6` pour une quantité comprise entre 2 et 6 piles), la valeur aléatoire sera recalculée pour chaque cible sélectionnée. Cela permet une distribution dynamique et variée des objets. 
+
+**Détails supplémentaires**  
+
+1. Les objets non empilables sont également pris en charge : chaque pile correspondra à un exemplaire unique de l’objet.  
+2. En combinaison avec l’option **Quantité maximale par pile**, cette règle permet de distribuer efficacement des objets tout en contrôlant leur empilement et leur quantité globale.  
+
+#### Exemples
+
+| Exemple | Code |
+| ------- | ---- |
+| 1 objet par cible | `-` ou `1` |
+| 3 objets par cible | `3` |
+| Entre 2 et 6 objets par cible | `2-6` |
+
+### Quantité maximale par pile
+
+Cette option permet de définir combien d’unités d’un objet peuvent être présentes dans une seule pile lors de la distribution.
+
+- Si aucune valeur n’est définie, la valeur d'empilement maximal spécifiée dans l’objet même sera utilisée.
+- Si la **quantité maximale par pile** dépasse la limite d’empilement de l’objet, une seule pile contenant le maximum autorisé par l’objet sera créée.
+- Pour créer plusieurs piles, il faudra définir cette intention via la **quantité d’objets distribués par cible**.
+- Dans le cas où la quantité est définie aléatoirement (par exemple, `2-6` pour une quantité comprise entre 2 et 6 unités par pile), la valeur aléatoire sera recalculée pour chaque pile générée. Cela garantit une variation entre les piles distribuées.
+
+#### Exemples
+
+| Exemple | Code |
+| ------- | ---- |
+| L’empilement maximal autorisé par l’objet | `-` |
+| Maximum de 10 unités par pile | `10` |
+| Entre 5 et 15 unités maximum par pile | `5-15` |
 
 ### Objet à distribuer
 
@@ -57,15 +96,29 @@ Si le nombre de cibles disponibles est inférieur à celui souhaité, l'objet ne
 
 ### Cible de l'objet
 
-La cible désigne l'endroit où l'objet sera distribué. Les types de cibles possibles incluent :
+La cible désigne l'endroit où l'objet sera distribué. Elle peut être définie de plusieurs manières, selon le niveau de précision souhaité :
 
-- **Créature**
+1. **Par le nom du fichier** : La méthode la plus simple consiste à spécifier directement le fichier correspondant à la cible (par exemple, `skelet01.cre` pour une créature spécifique ou `ribald3.sto` pour un magasin particulier).
+2. **Par une sélection aléatoire ou complexe** : Si aucune cible précise n'est indiquée, des [groupes](groupes), des [meta-groupes](meta-groupes) ou des [combinaisons](#combinaisons) de critères peuvent être utilisés pour définir les cibles.
+
+Les types de cibles possibles incluent :
+
+- **Créature** : L'objet peut être ajouté à l'inventaire ou équipé sur une créature.
 - **Magasin** : Seuls les magasins acceptant le type d'objet seront pris en compte.
-- **Conteneur**
+- **Conteneur** : L'objet sera placé dans un conteneur spécifique ou aléatoire.
 
-Si aucune cible n'est spécifiée, elle sera choisie aléatoirement parmi l'ensemble des créatures disponibles.
+**Conditions de sélection pour les créatures**
 
-Vous pouvez cibler spécifiquement en utilisant le nom de fichier ou sélectionner des cibles à partir de groupes ou de meta-groupes.
+Lorsqu'une créature est sélectionnée aléatoirement, les conditions suivantes s'appliquent :
+
+- **Si l'objet est destiné à être équipé**, seules les **créatures humanoïdes** avec un emplacement d'équipement libre sont éligibles. Un emplacement est considéré comme libre si aucun objet non droppable n'y est déjà équipé.
+- **Si l'objet est une arme ou un bouclier et doit être équipé**, seules les créatures possédant une compétence martiale suffisante pour manier l'objet seront retenues. Cela garantit que les créatures sélectionnées peuvent utiliser l'objet de manière optimale.
+- Seules les créatures qui possèdent au moins un emplacement d'inventaire libre sont éligibles à la sélection.
+
+Dans les cas où plusieurs mods ciblent la même créature ou que cette dernière est sélectionnée plusieurs fois pour un objet à équiper sur le même emplacement, une liste de trésors aléatoires sera automatiquement générée et assignée à la créature. L'objet final sera alors déterminé de manière aléatoire pendant la partie.
+
+Si aucune cible n'est spécifiée, elle sera choisie aléatoirement parmi l'ensemble des créatures disponibles.  
+Si aucune cible valide (créature, magasin ou conteneur) ne peut être trouvée, la règle de distribution sera ignorée.
 
 #### Exemples de cibles
 
@@ -83,6 +136,12 @@ Vous pouvez cibler spécifiquement en utilisant le nom de fichier ou sélectionn
 | Une créature aléatoire de niveau 3 et plus | Sur une créature de niveau 3 et plus | `3+.lvl` |
 | Une créature aléatoire de niveau 3 et moins | Sur une créature de niveau 3 et moins | `3-.lvl` |
 | Une créature aléatoire de niveau 3 à 6 | Sur une créature de niveau 3 à 6 | `3-6.lvl` |
+| Une créature aléatoire possédant une force 12 et plus | Sur une créature possédant une force 12 et plus	| `12+.str` |
+| Une créature aléatoire possédant une dextérité de 14 | Sur une créature possédant une dextérité de 14	| `14.dex` |
+| Une créature aléatoire possédant une constitution de 16 et moins | Sur une créature possédant une constitution de 16 et moins	| `16-.con` |
+| Une créature aléatoire possédant une intelligence entre 12 et 14 | Sur une créature possédant une intelligence entre 12 et 14	| `12-14.int` |
+| Une créature aléatoire possédant une sagesse de 15 | Sur une créature possédant une sagesse de 15	| `15.wis` |
+| Une créature aléatoire possédant un charsime de 15 | Sur une créature possédant un charsime de 15	| `15.cha` |
 | Un magasin spécifique | Dans le magasin de Ribald | `ribald3.sto` |
 | Un magasin aléatoire | Dans un magasin aléatoire | `?.sto` |
 | Un conteneur aléatoire | Dans un conteneur aléatoire | `?.cnt` |
@@ -153,6 +212,10 @@ Cette option, applicable uniquement si la cible est une créature, détermine si
 - **Gestion des emplacements** : Si l'emplacement où l'objet doit être équipé est déjà occupé, le mod remplacera l'objet existant par celui à distribuer, à condition qu'il soit du même type. Cette vérification garantit que la créature sera apte à l'utiliser.
 - **Remplacement** : Si l'objet ne peut pas être équipé dans le slot prévu (par exemple, une arme à deux mains ne pouvant pas être équipée par une créature portant déjà un bouclier), la distribution de l'objet ne sera pas réalisée sur cette créature.
 
+Si la cible est une créature et que l'objet à équiper est une arme ou un bouclier, le mod prend en compte ses compétences martiales pour s'assurer qu'elle peut les utiliser de manière optimale. Une option globale permet de définir le nombre minimal d'étoiles de compétence requis pour qu'une créature puisse équiper l'objet. Par défaut, cette valeur est fixée à 1, mais peut être augmentée jusqu'à 5 pour renforcer la sélectivité. Cela réduit la probabilité qu'une créature reçoive une arme en distribution aléatoire mais reste utile en distribution directe pour éviter des incompatibilités.    
+Si une créature ne possède aucune compétence martiale, l'objet sera tout de même équipé, sauf si elle fait partie de la liste de créatures spécifiquement définies comme ne pouvant pas recevoir d'arme.  
+Une protection est en place pour éviter de remplacer des objets spéciaux déjà équipés par les créatures. Si l'objet actuel est non droppable ou s'il ne dispose pas de description, il ne sera pas remplacé, car ces objets sont souvent destinés à fournir des capacités spéciales à la créature. Cette règle fonctionne en tandem avec la liste des objets à ignorer.
+
 | Exemple | Code |
 | ------- | ---- |
 | L'objet ne sera pas équipé | `-` ou `0` |
@@ -181,10 +244,20 @@ Cette option indique si l'objet peut être ramassé (looté) après que la créa
 
 ### Chance de prise en compte de la ligne
 
-Cette option définit la probabilité, en pourcentage, que la ligne soit prise en compte pour la distribution de l'objet. Elle accepte une valeur de 1 à 100.
+Cette option détermine la probabilité que **l'un des objets sélectionnés aléatoirement** soit effectivement distribué. Elle accepte une valeur comprise entre 1 et 100, représentant un pourcentage.  
 
-#### Exemple
-Si la valeur est définie à 50, il y a 50 % de chances que l'objet soit distribué selon les critères de la ligne.
+- **Valeur basse** : Une valeur faible (par exemple, 10) indique une faible probabilité que l'objet soit distribué.  
+- **Valeur élevée** : Une valeur élevée (par exemple, 90) augmente la probabilité que l'objet soit inclus dans la distribution.  
+
+Cela permet de contrôler la fréquence à laquelle un objet aléatoire sélectionné sera effectivement distribué, ajoutant ainsi de la variabilité et de la flexibilité à la distribution.  
+
+#### Exemples  
+
+| Exemple | Code |
+| ------- | ---- |
+| 100 % de chance (tous les objets seront distribués) | `100` |
+| 50 % de chance pour chaque objet sélectionné | `50` |
+| 10 % de chance pour chaque objet sélectionné | `10` |
 
 <a name="combinaisons"></a>
 ## Les combinaisons
@@ -211,6 +284,7 @@ La définition de la cible serait alors : `dwarf.rce&male.gnd&evils.grp&ar0602.a
 
 Les groupes permettent de regrouper plusieurs entités sous une seule référence, facilitant ainsi la sélection des cibles. Un fichier `.grp` contient les entités à inclure, chacune sur une ligne distincte.
 
+<a name="meta-groupes"></a>
 ## Les meta-groupes
 
 Les meta-groupes sont des ensembles dynamiques générés automatiquement à partir des données du jeu et s'adaptent aux ajouts d'autres mods. Ils fonctionnent comme des groupes classiques, avec une extension spécifique pour cibler le meta-groupe souhaité.
@@ -225,24 +299,34 @@ Les meta-groupes sont des ensembles dynamiques générés automatiquement à par
 
 | Type | Meta-groupe | Fichier .ids | Extension | Exemple |
 | ---- | ----------- | ------------ | --------- | ------- |
-| Créature | Race de la créature | race.ids | rce | `human.rce` |
-| Créature | Classe de la créature | class.ids | cls | `mage.cls` |
-| Créature | Kit de la créature | kit.ids | kit | `mage.kit` |
-| Créature | Genre de la créature | gender.ids | gnd | `female.gnd` |
-| Créature | Alignement de la créature | alignmen.ids | alg | `lawful_evil.alg` |
-| Créature | Donnée générale de la créature | general.ids | gen | `undead.gen` |
-| Créature | Donnée spécifique de la créature | specific.ids | spc | `magic.spc` |
-| Objet | Catégorie de l'objet | itemcat.ids | cat | `amulet.cat` |
+| Créature | Race de la créature | [race.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/race.htm>) | rce | `human.rce` |
+| Créature | Classe de la créature | [class.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/class.htm>) | cls | `mage.cls` |
+| Créature | Kit de la créature | [kit.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/kit.htm>) | kit | `mage.kit` |
+| Créature | Genre de la créature | [gender.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/gender.htm>) | gnd | `female.gnd` |
+| Créature | Alignement de la créature | [alignmen.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/alignmen.htm>) | alg | `lawful_evil.alg` |
+| Créature | Donnée générale de la créature | [general.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/general.htm>) | gen | `undead.gen` |
+| Créature | Donnée spécifique de la créature | [specific.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/specific.htm>) | spc | `magic.spc` |
+| Créature | Compétence martiale de la créature | [wprof.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/wprof.htm>) | prf | `proficiency2weapon.spc` |
+| Objet | Catégorie de l'objet | [itemcat.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/itemcat.htm>) | cat | `amulet.cat` |
+| Magasin | Catégorie de l'objet acceptée | [itemcat.ids](<https://gibberlings3.github.io/iesdp/files/ids/bgee/itemcat.htm>) | prc | `boot.prc` |
 
 ### Les meta-groupes basés sur d'autres données
 
 | Type | Meta-groupe | Extension | Exemple |
 | ---- | ----------- | --------- | ------- |
 | Créature | Niveau de la créature | lvl | `2.lvl` |
+| Créature | Force de la créature | lvl | `15.str` |
+| Créature | Dextérité de la créature | lvl | `14-.dex` |
+| Créature | Constitution de la créature | lvl | `17+.con` |
+| Créature | Intelligence de la créature | lvl | `14-16.int` |
+| Créature | Sagesse de la créature | lvl | `12.wis` |
+| Créature | Charisme de la créature | lvl | `12.cha` |
+| Créature | Les créatures de la zone | are | `ar0602.are` |
 | Objet | Niveau d'echantement de l'objet | ilv | `4+.ilv` |
-| Objet | Objets maudits | mgr | `cursed.mgr` |
-| Objet | Armes à deux mains | mgr | `two_handed.mgr` |
-| Objet | Objets magiques | mgr | `magical.mgr` |
+| Objet | Objets maudits | igr | `cursed.igr` |
+| Objet | Armes à deux mains | igr | `two_handed.igr` |
+| Objet | Objets magiques | igr | `magical.igr` |
+| Objet | Objets qui peuvent s'empiler | igr | `stackable.igr` |
 | Objet | Robes | arm | `robe.arm` |
 | Objet | Armures de cuir | arm | `leather.arm` |
 | Objet | Armures de mailles | arm | `chainmail.arm` |
@@ -251,6 +335,23 @@ Les meta-groupes sont des ensembles dynamiques générés automatiquement à par
 | Objet | Petits boucliers | arm | `small_shield.arm` |
 | Objet | Boucliers moyens | arm | `medium_shield.arm` |
 | Objet | Grands boucliers | arm | `large_shield.arm` |
+| Objet | Objet qui s'équipe à l'emplacement du casque | slt | `helmet.slt` |
+| Objet | Objet qui s'équipe à l'emplacement de l'armure | slt | `armor.slt` |
+| Objet | Objet qui s'équipe à l'emplacement du bouclier | slt | `shield.slt` |
+| Objet | Objet qui s'équipe à l'emplacement des gants | slt | `gloves.slt` |
+| Objet | Objet qui s'équipe à l'emplacement de l'amulette | slt | `amulet.slt` |
+| Objet | Objet qui s'équipe à l'emplacement de la ceinture | slt | `belt.slt` |
+| Objet | Objet qui s'équipe à l'emplacement des bottes | slt | `boots.slt` |
+| Objet | Objet qui s'équipe à l'emplacement de l'arme | slt | `weapon.slt` |
+| Objet | Objet qui s'équipe à l'emplacement de la cape | slt | `cloak.slt` |
+| Objet | Objet qui s'équipe à l'emplacement des munitions | slt | `quiver.slt` |
+| Objet | Objet qui s'équipe à l'emplacement des anneaux | slt | `left_ring.slt` |
+| Objet | Objet qui s'équipe à l'emplacement des objets rapides | slt | `quick_item.slt` |
+| Magasin | Les magasins | stt | `store.stt` |
+| Magasin | Les tavernes | stt | `tavern.stt` |
+| Magasin | Les auberges | stt | `inn.stt` |
+| Magasin | Les temples | stt | `temple.stt` |
+| Magasin | Les conteneurs | stt | `container.stt` |
 
 #### Détails sur le niveau de la créature et le niveau d'enchantement de l'objet
 
@@ -268,4 +369,32 @@ Les meta-groupes relatifs au niveau de la créature et au niveau d'enchantement 
 Vous pouvez référencer des listes de trésors aléatoires qui seront attribuées par le jeu. Utilisez cette fonctionnalité pour enrichir la diversité des objets obtenus par les créatures ou les conteneurs.
 
 ## Comment un autre mod peut venir se greffer à la répartition ?
+
+Il est très simple pour un autre mod de s'intégrer au système de répartition d'ItemDispatcher. Pour cela, il suffit de créer un dossier nommé `dispatching` et d'y inclure des fichiers pertinents tels que `items.2da`, des groupes ou des listes de trésors aléatoires.
+
+### Structure d'arborescence
+
+```
+dispatching
+|_ items.2da
+|_ groups
+   |_ boss.2da
+   |_ all_elf.2da
+   |_ ...
+|_ treasures
+   |_ gems.2da
+   |_ bigswords.2da
+   |_ ...
+```
+
+### Fonctionnement
+
+Lors de l'installation, ItemDispatcher scanne tous les mods présents dans le répertoire du jeu, vérifie l'existence du dossier `dispatching` et traite les fichiers qui s'y trouvent. Cela permet à un mod de s'intégrer harmonieusement au système de distribution d'objets sans nécessiter de modifications complexes.
+
+### Exemple pratique
+
+Si un mod ajoute de nouveaux boss et que l'auteur souhaite les inclure dans la liste des boss existants, il suffit de créer le fichier `groups/boss.2da` et d'y lister les nouvelles cibles. Cela garantit que ses boss seront pris en compte (en plus des boss du jeu de base et ceux ajoutés par d'autres mods) lorsqu'une règle de distribution utilisera ce groupe.
+
 ## Quelques règles générales
+
+Un fichier de log est généré pour consigner tous les changements effectués par le mod. Ce fichier peut être utilisé à des fins de vérification ou pour consulter les détails sur la localisation des objets ajoutés.
