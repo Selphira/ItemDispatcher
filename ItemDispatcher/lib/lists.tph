@@ -91,13 +91,14 @@ BEGIN
             READ_2DA_ENTRY_FORMER ~rows~ row  5 target
             READ_2DA_ENTRY_FORMER ~rows~ row  6 source
             READ_2DA_ENTRY_FORMER ~rows~ row  7 chapter
-            READ_2DA_ENTRY_FORMER ~rows~ row  8 difficulty
-            READ_2DA_ENTRY_FORMER ~rows~ row  9 equipable
-            READ_2DA_ENTRY_FORMER ~rows~ row 10 stealable
-            READ_2DA_ENTRY_FORMER ~rows~ row 11 droppable
-            READ_2DA_ENTRY_FORMER ~rows~ row 12 chance
+            READ_2DA_ENTRY_FORMER ~rows~ row  8 time_of_day
+            READ_2DA_ENTRY_FORMER ~rows~ row  9 difficulty
+            READ_2DA_ENTRY_FORMER ~rows~ row 10 equipable
+            READ_2DA_ENTRY_FORMER ~rows~ row 11 stealable
+            READ_2DA_ENTRY_FORMER ~rows~ row 12 droppable
+            READ_2DA_ENTRY_FORMER ~rows~ row 13 chance
 
-            SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
+            SPRINT ~line~ ~%item_quantity%%TAB%%item_per_target%%TAB%%stack_size%%TAB%%item%%TAB%%target_quantity%%TAB%%target%%TAB%%source%%TAB%%chapter%%TAB%%time_of_day%%TAB%%difficulty%%TAB%%equipable%%TAB%%stealable%%TAB%%droppable%%TAB%%chance%~
 
             LPF ~lists#merge#append_line~ STR_VAR line END
         END

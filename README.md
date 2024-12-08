@@ -182,6 +182,27 @@ L'apparition est régie par un script vérifiant le chapitre en cours.
 | Présent jusqu'au chapitre 3 inclus | `3-` |
 | Présent du chapitre 3 au chapitre 5 inclus | `3-5` |
 
+### Moment de la journée  
+
+Cette option permet de définir à quel moment de la journée un objet peut apparaître. Les valeurs possibles correspondent à des périodes spécifiques :  
+
+- **0** : Le jour  
+- **1** : Le crépuscule  
+- **2** : La nuit  
+- **3** : Le matin    
+
+#### Exemples  
+
+| Exemple | Code |
+| ------- | ---- |
+| Présent à n'importe quel moment de la journée. | `*` |
+| Présent uniquement pendant la journée. | `0` |
+| Présent uniquement au crépuscule. | `1` |
+| Présent uniquement pendant la nuit. | `2` |
+| Présent uniquement le matin. | `3` |
+| Présent le matin et la journée. | `0\|3` |
+| Présent au crépuscule, la nuit et le matin. | `1\|2\|3` |
+
 ### Difficulté requise
 
 Vous pouvez choisir de distribuer un objet selon le niveau de difficulté du jeu (valeurs de 1 à 5).
