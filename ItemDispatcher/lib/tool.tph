@@ -240,8 +240,19 @@ BEGIN
             REPLACE_TEXTUALLY "^%separator%\(.*\)$" "\1"
         END
 
-        OUTER_SPRINT $parts(~%index%~) ~%part%~
-        OUTER_SET index += 1
+        ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
+            OUTER_PATCH_SAVE part "%part%" BEGIN
+                REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
+            END
+            OUTER_SPRINT $parts(~%index%~) ~%part%~
+            OUTER_SET index += 1
+            OUTER_SPRINT $parts(~%index%~) ~~
+            OUTER_SET index += 1
+        END
+        ELSE BEGIN
+            OUTER_SPRINT $parts(~%index%~) ~%part%~
+            OUTER_SET index += 1
+        END
     END
 END
 
