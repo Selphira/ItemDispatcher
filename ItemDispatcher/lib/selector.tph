@@ -91,6 +91,7 @@ DEFINE_PATCH_FUNCTION ~selector#target#get~
         count = 0
         count_is_percent = 0
         item_is_equipable = 0
+        item_count = 1
     STR_VAR
         target = ~~
         item = ~~
@@ -208,7 +209,7 @@ BEGIN
                 // On ne garde que les créatures dont l'emplacement de l'objet n'est pas rempli par un objet non droppable
                 LPF ~data#load#slot_type~ INT_VAR category RET slot_type END
                 PATCH_IF STRING_LENGTH ~%slot_type%~ > 0 BEGIN
-                    LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_locked_slot_%slot_type%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_locked_slot_%slot_type%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                    LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~group_cre_locked_slot_%slot_type%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
 
                     // On ne garde que les créatures humanoïdes
                     LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_general_humanoid~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_general_humanoid~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
@@ -224,8 +225,10 @@ BEGIN
                 END
             END
             ELSE BEGIN
-                // On ne garde que les créatures possédant au moins un emplacement d'équipement libre
-                LPF ~tool#array#diff~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_cre_empty_inventory_slots_0~) STR_VAR array = ~cre_targets~ array2 = ~group_cre_empty_inventory_slots_0~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                // On ne garde que les créatures possédant assez d'emplacements d'inventaire libres
+                FOR (index = item_count - 1; index >= 1; --index) BEGIN
+                    LPF ~tool#array#merge~ STR_VAR array = ~cre_targets~ array2 = ~group_cre_empty_inventory_slots_%index%~ RET count_cre_targets = count RET_ARRAY cre_targets = array END
+                END
             END
         BUT_ONLY
     END
