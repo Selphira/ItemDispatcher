@@ -261,6 +261,26 @@ BEGIN
     END
 END
 
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#merge~
+    STR_VAR
+        array = ~~
+        array2 = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    OUTER_SET count = 0
+
+    ACTION_PHP_EACH ~%array2%~ AS key => value BEGIN
+        OUTER_SPRINT $array(~%key%~) ~%value%~
+    END
+
+    ACTION_PHP_EACH ~%array%~ AS key => value BEGIN
+        OUTER_SET count += 1
+    END
+END
+
 DEFINE_DIMORPHIC_FUNCTION ~tool#array#intersect~
     INT_VAR
         count_array = 0
@@ -343,4 +363,21 @@ BEGIN
             OUTER_SET array_count -= 1
         END
     END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#item#get_charges~
+    STR_VAR
+        item = ~~
+    RET
+        charge
+BEGIN
+    OUTER_SET charge = 0
+    COPY_EXISTING ~%item%.itm~ ~override~
+        READ_SHORT 0x68 count_headers
+        READ_LONG  0x64 offset_headers
+        FOR (index = 0; index < count_headers; index += 1) BEGIN
+            READ_SHORT (offset_headers + (index * 0x38) + 0x22) charge
+            SET index = count_headers
+        END
+    BUT_ONLY
 END
