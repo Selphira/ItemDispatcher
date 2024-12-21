@@ -17,7 +17,7 @@ BEGIN
     CLEAR_ARRAY items
     CLEAR_ARRAY itm_targets
 
-    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9]+\.itm$~ == 0 BEGIN
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9_#]+\.itm$~ == 0 BEGIN
         SPRINT $items(1) ~%target%~
         SET count_items = 1
     END
@@ -112,7 +112,7 @@ BEGIN
     CLEAR_ARRAY sto_targets
     CLEAR_ARRAY cnt_targets
 
-    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-zA-Z0-9#]+\.cre$~ == 0 BEGIN
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9_#]+\.cre$~ == 0 BEGIN
         PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
             SPRINT $targets(1) ~%target%~
             SET count_targets = 1
