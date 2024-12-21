@@ -39,7 +39,7 @@ END
  * - $~cre_locked_slot_%slot_name%~(~%creature%~)
  *
  * Liste des emplacements d'inventaire vides de chaque créature
- * - $empty_inventory_slots(~%creature%~)
+ * - $group_cre_empty_inventory_slots(~%creature%~)
  */
 DEFINE_ACTION_MACRO ~data#load#creatures~
 BEGIN
