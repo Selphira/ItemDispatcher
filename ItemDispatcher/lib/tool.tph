@@ -42,7 +42,7 @@ BEGIN
     END
 END
 
-DEFINE_PATCH_FUNCTION ~tool#range~
+DEFINE_DIMORPHIC_FUNCTION ~tool#range~
     INT_VAR
         min = 0
         max = 0
@@ -52,23 +52,23 @@ DEFINE_PATCH_FUNCTION ~tool#range~
         min
         max
 BEGIN
-    SET is_percent = 0
-    SET quantity = 1
+    OUTER_SET is_percent = 0
+    OUTER_SET quantity = 1
 
-    PATCH_IF IS_AN_INT value AND value > 0 BEGIN
-        SET min = value > min ? value : min
-        SET max = value < max ? value : max
+    ACTION_IF IS_AN_INT value AND value > 0 BEGIN
+        OUTER_SET min = value > min ? value : min
+        OUTER_SET max = value < max ? value : max
     END
-    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)\+$~ == 0 BEGIN
-        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~\+~ ~~ END
-        SET min = value > min ? value : min
+    ELSE ACTION_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)\+$~ == 0 BEGIN
+        OUTER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~\+~ ~~ END
+        OUTER_SET min = value > min ? value : min
     END
-    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-$~ == 0 BEGIN
-        INNER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~-~ ~~ END
-        SET max = value < max ? value : max
+    ELSE ACTION_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-$~ == 0 BEGIN
+        OUTER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~-~ ~~ END
+        OUTER_SET max = value < max ? value : max
     END
-    ELSE PATCH_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
-        INNER_PATCH ~%value%~ BEGIN
+    ELSE ACTION_IF ~%value%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
+        OUTER_PATCH ~%value%~ BEGIN
             REPLACE_EVALUATE ~\([0-9]+\)-\([0-9]+\)~ BEGIN
                 PATCH_IF MATCH1 > MATCH2 BEGIN
                     SET min = MATCH2 > min ? MATCH2 : min
@@ -82,7 +82,7 @@ BEGIN
         END
     END
     ELSE BEGIN
-        PATCH_FAIL ~Invalid range (%value%)~
+        FAIL ~Invalid range (%value%)~
     END
 END
 
@@ -195,16 +195,20 @@ BEGIN
 END
 
 DEFINE_DIMORPHIC_FUNCTION ~tool#string#explode~
+    INT_VAR
+        to_key = 0
     STR_VAR
         string = ~~
         separator = ~ ~
+    RET
+        count
     RET_ARRAY
         parts
 BEGIN
     ACTION_DEFINE_ARRAY ~parts~ BEGIN END
 
     OUTER_SPRINT ~list~ ~%string%~
-    OUTER_SET index = 0
+    OUTER_SET count = 0
 
     OUTER_WHILE ~%list%~ STRING_COMPARE ~~ BEGIN
         OUTER_PATCH_SAVE list "%list%" BEGIN
@@ -240,20 +244,49 @@ BEGIN
             REPLACE_TEXTUALLY "^%separator%\(.*\)$" "\1"
         END
 
-        ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
-            OUTER_PATCH_SAVE part "%part%" BEGIN
-                REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
+        ACTION_IF to_key == 0 BEGIN
+            ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
+                OUTER_PATCH_SAVE part "%part%" BEGIN
+                    REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
+                END
+                OUTER_SPRINT $parts(~%count%~) ~%part%~
+                OUTER_SET count += 1
+                OUTER_SPRINT $parts(~%count%~) ~~
+                OUTER_SET count += 1
             END
-            OUTER_SPRINT $parts(~%index%~) ~%part%~
-            OUTER_SET index += 1
-            OUTER_SPRINT $parts(~%index%~) ~~
-            OUTER_SET index += 1
+            ELSE BEGIN
+                OUTER_SPRINT $parts(~%count%~) ~%part%~
+                OUTER_SET count += 1
+            END
         END
         ELSE BEGIN
-            OUTER_SPRINT $parts(~%index%~) ~%part%~
-            OUTER_SET index += 1
+            ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
+                OUTER_PATCH_SAVE part "%part%" BEGIN
+                    REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
+                END
+                OUTER_SPRINT $parts(~%part%~) ~%count%~
+                OUTER_SET count += 1
+            END
+            ELSE BEGIN
+                OUTER_SPRINT $parts(~%part%~) ~%count%~
+                OUTER_SET count += 1
+            END
         END
     END
+END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#string#pad_left~
+    INT_VAR
+        min_length = 1
+    STR_VAR
+        string = ~~
+        pad = ~0~
+    RET
+        string
+BEGIN
+	OUTER_WHILE (STRING_LENGTH ~%string%~ < min_length) BEGIN
+		OUTER_TEXT_SPRINT string ~%pad%%string%~
+	END
 END
 
 DEFINE_DIMORPHIC_FUNCTION ~tool#array#clone~
@@ -373,6 +406,29 @@ BEGIN
             OUTER_SPRINT $~%array%~(~%selected%~) $~%array%~(~%array_count%~)
             OUTER_SET array_count -= 1
         END
+    END
+END
+
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#range~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        value = ~~
+    RET
+        count
+        min
+        max
+    RET_ARRAY
+        values
+BEGIN
+    ACTION_DEFINE_ARRAY ~values~ BEGIN END
+    OUTER_SET count = 0
+    LAF ~tool#range~ INT_VAR min max STR_VAR value RET min max END
+    OUTER_FOR (index = min; index <= max; ++index) BEGIN
+        OUTER_SET $values(~%index%~) = index
+        OUTER_SET count += 1
     END
 END
 
