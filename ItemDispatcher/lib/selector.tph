@@ -216,7 +216,7 @@ BEGIN
 
                     PATCH_IF ~%slot_type%~ STRING_EQUAL ~weapon~ BEGIN
                         // On ne garde que les créatures qui ont une compétence martiale pour l'arme sélectionnée ou une compétence martiale liée au nombre de main nécessaire pour manier l'arme
-                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~group_2da_cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
                     END
                     ELSE PATCH_IF ~%slot_type%~ STRING_EQUAL ~shield~ BEGIN
                         // On ne garde que les créatures qui ont une compétence martiale dans épée et bouclier
