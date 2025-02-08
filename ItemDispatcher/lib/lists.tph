@@ -198,9 +198,9 @@ END
  * $group_%group_name%(2) = creature3
  * $group_%group_name%(3) = creature4
  *
- * Egalement, une entrée dans le tableau $groups est ajoutée avec le nombre d'éléments du tableau
+ * Egalement, une entrée dans le tableau $group_count est ajoutée avec le nombre d'éléments du tableau
  *
- * $groups(~%group_name%~) = 4
+ * $group_count(~%group_name%~) = 4
  */
 DEFINE_ACTION_MACRO ~lists#load#groups~
 BEGIN
@@ -217,10 +217,10 @@ BEGIN
 	    SET count = 0
         PATCH_PHP_EACH ~temporary_groups~ AS target => _ BEGIN
 	        TO_LOWER target
-            SET $~group_%SOURCE_RES%~(~%target%~) = 1
+            SET $~group_2da_%SOURCE_RES%~(~%target%~) = 1
 	        SET count += 1
         END
-        SET $groups(~%SOURCE_RES%~) = count
+        SET $group_count(~group_2da_%SOURCE_RES%~) = count
 	BUT_ONLY
 END
 

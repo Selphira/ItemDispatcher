@@ -140,7 +140,7 @@ BEGIN
         END
 
         PATCH_IF count_is_percent == 1 BEGIN
-            SET count = count_eligible_targets / count * 100
+            SET count = count_eligible_targets * 100 / count
         END
 
         LPF ~log#add#debug~ STR_VAR message = ~Cibles potentielles pour %target% : %count_eligible_targets%~ END
@@ -206,9 +206,9 @@ BEGIN
             LPF ~tool#array#intersect~ INT_VAR count_array = count_sto_targets count_array2 = $group_count(~group_sto_purchase_%category_name%~) STR_VAR array = ~sto_targets~ array2 = ~group_sto_purchase_%category_name%~ RET count_sto_targets = count RET_ARRAY sto_targets = new_array END
 
             PATCH_IF item_is_equipable == 1 BEGIN
-                // On ne garde que les créatures dont l'emplacement de l'objet n'est pas rempli par un objet non droppable
                 LPF ~data#load#slot_type~ INT_VAR category RET slot_type END
                 PATCH_IF STRING_LENGTH ~%slot_type%~ > 0 BEGIN
+                    // On ne garde que les créatures dont l'emplacement de l'objet n'est pas rempli par un objet non droppable
                     LPF ~tool#array#diff~ STR_VAR array = ~cre_targets~ array2 = ~group_cre_locked_slot_%slot_type%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
 
                     // On ne garde que les créatures humanoïdes
@@ -216,7 +216,7 @@ BEGIN
 
                     PATCH_IF ~%slot_type%~ STRING_EQUAL ~weapon~ BEGIN
                         // On ne garde que les créatures qui ont une compétence martiale pour l'arme sélectionnée ou une compétence martiale liée au nombre de main nécessaire pour manier l'arme
-                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $groups(~cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
+                        LPF ~tool#array#intersect~ INT_VAR count_array = count_cre_targets count_array2 = $group_count(~cre-proficiency-%hand_count%h-%proficiency_name%~) STR_VAR array = ~cre_targets~ array2 = ~group_cre-proficiency-%hand_count%h-%proficiency_name%~ RET count_cre_targets = count RET_ARRAY cre_targets = new_array END
                     END
                     ELSE PATCH_IF ~%slot_type%~ STRING_EQUAL ~shield~ BEGIN
                         // On ne garde que les créatures qui ont une compétence martiale dans épée et bouclier
@@ -472,7 +472,7 @@ BEGIN
             END
 
             ~are~ BEGIN SPRINT group_name ~group_are_%group_name%~ END
-            ~grp~ BEGIN SPRINT group_name ~group_%group_name%~ END
+            ~grp~ BEGIN SPRINT group_name ~group_2da_%group_name%~ END
             DEFAULT
         END
     END
