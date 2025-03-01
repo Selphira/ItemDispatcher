@@ -316,6 +316,7 @@ BEGIN
     LAF ~data#load#slots~  RET_ARRAY group_count END
     LAF ~data#load#armor_types~  RET_ARRAY group_count END
     LAF ~data#load#enchantments~ RET_ARRAY group_count END
+    LAF ~data#load#scrolls~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_itm_all~)        = 0
     OUTER_SET $group_count(~group_itm_cursed~)     = 0
@@ -395,6 +396,17 @@ BEGIN
         PATCH_IF is_weapon AND twohanded == 1 BEGIN
             SET $group_itm_two_handed(~%item%~) = 1
             SET $group_count(~group_itm_two_handed~) += 1
+        END
+
+        PATCH_IF category == 0xb BEGIN // scroll
+            LPF ~data#load#itm_scroll_informations~ RET found spell_level spell_school END
+            PATCH_IF found BEGIN
+                SET $~group_itm_scroll_%spell_level%~(~%item%~) = 1
+                SET $group_count(~group_itm_scroll_%spell_level%~) += 1
+
+                SET $~group_itm_scroll_%spell_school%~(~%item%~) = 1
+                SET $group_count(~group_itm_scroll_%spell_school%~) += 1
+            END
         END
 	BUT_ONLY
 END
@@ -660,6 +672,19 @@ BEGIN
     END
 END
 
+DEFINE_ACTION_FUNCTION ~data#load#scrolls~
+    RET_ARRAY
+        group_count
+BEGIN
+    OUTER_FOR (spell_level = 0; spell_level <= 9; ++spell_level) BEGIN
+        OUTER_SET $group_count(~group_itm_scroll_%spell_level%~) = 0
+    END
+
+    ACTION_PHP_EACH spell_schools AS _ => spell_school BEGIN
+        OUTER_SET $group_count(~group_itm_scroll_%spell_school%~) = 0
+    END
+END
+
 DEFINE_PATCH_FUNCTION ~data#load#armor_type~
     STR_VAR
         animation = ~~
@@ -716,6 +741,42 @@ BEGIN
     END
 END
 
+DEFINE_PATCH_FUNCTION ~data#load#itm_scroll_informations~
+    RET
+        found
+        spell_level
+        spell_school
+BEGIN
+    SET found = 0
+    SPRINT spell_level ~~
+    SPRINT spell_school ~~
+
+    GET_OFFSET_ARRAY headerOffsets ITM_V10_HEADERS
+    PHP_EACH headerOffsets AS _ => headerOffset BEGIN
+        GET_OFFSET_ARRAY2 offsets headerOffset ITM_V10_HEAD_EFFECTS
+        PHP_EACH offsets AS _ => offset BEGIN
+            READ_SHORT offset opcode
+
+            PATCH_IF opcode == 147 BEGIN
+                READ_ASCII (offset + 0x14) resref
+
+                PATCH_IF FILE_EXISTS_IN_GAME ~%resref%.spl~ BEGIN
+                    INNER_PATCH_FILE ~%resref%.spl~ BEGIN
+                        READ_SHORT 0x1c spellType
+                        READ_BYTE  0x25 spellSchool
+                        READ_LONG  0x34 spell_level
+
+                        PATCH_IF spellType == 1 BEGIN
+                            SET found = 1
+                            SPRINT spell_school $spell_schools(~%spellSchool%~)
+                        END
+                    END
+                END
+            END
+        END
+    END
+END
+
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~ability_scores~ BEGIN
     ~str~ => ~strength~
     ~int~ => ~intelligence~
@@ -748,6 +809,7 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~target_group_categories~ BEGIN
     ~prc~ => ~sto~
     ~prf~ => ~cre~
     ~rce~ => ~cre~
+    ~scl~ => ~itm~
     ~slt~ => ~itm~
     ~spc~ => ~cre~
     ~sto~ => ~sto~
@@ -809,6 +871,30 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~store_types~ BEGIN
     2 => ~inn~
     3 => ~temple~
     5 => ~container~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~spell_schools~ BEGIN
+    0 => ~none~
+    1 => ~abjuration~
+    2 => ~conjuration~
+    3 => ~divination~
+    4 => ~enchantment~
+    5 => ~illusion~
+    6 => ~evocation~
+    7 => ~necromancy~
+    8 => ~alteration~
+    9 => ~generalist~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~spell_types~ BEGIN
+    0 => ~special~
+    1 => ~wizard~
+    2 => ~divine~
+    3 => ~psionic~
+    4 => ~innate~
+    5 => ~song~
+    6 => ~priest~
+    7 => ~druid~
 END
 
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_category_to_item_slot~ BEGIN

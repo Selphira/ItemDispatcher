@@ -193,10 +193,10 @@ END
  *
  * Chaque tableau de groupe ressemble à ceci :
  *
- * $group_%group_name%(0) = creature1
- * $group_%group_name%(1) = creature2
- * $group_%group_name%(2) = creature3
- * $group_%group_name%(3) = creature4
+ * $group_2da_%group_name%(0) = creature1
+ * $group_2da_%group_name%(1) = creature2
+ * $group_2da_%group_name%(2) = creature3
+ * $group_2da_%group_name%(3) = creature4
  *
  * Egalement, une entrée dans le tableau $group_count est ajoutée avec le nombre d'éléments du tableau
  *
@@ -302,6 +302,24 @@ BEGIN
                 END
                 ~arm~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_armor_type_%target_name%~ RET_ARRAY temporary_groups END END
                 ~cat~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_category_%target_name%~   RET_ARRAY temporary_groups END END
+                ~scl~   BEGIN
+                    PATCH_MATCH ~%target_name%~
+                    WITH
+                        ~none~ ~abjuration~ ~conjuration~ ~divination~ ~enchantment~ ~illusion~ ~evocation~ ~necromancy~ ~alteration~ ~generalist~ BEGIN
+                            LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_scroll_%target_name%~ RET_ARRAY temporary_groups END
+                        END
+                        DEFAULT
+                            PATCH_IF IS_AN_INT target_name BEGIN
+                                LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_scroll_%target_name%~ RET_ARRAY temporary_groups END
+                            END
+                            ELSE BEGIN
+                                LPF ~tool#range~ INT_VAR min = 0 max = 6 STR_VAR value = ~%target_name%~ RET min max END
+                                FOR (level = min; level <= max; ++level) BEGIN
+                                    LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_scroll_%level%~ RET_ARRAY temporary_groups END
+                                END
+                            END
+                    END
+                END
                 ~slt~   BEGIN LPF ~lists#load#group.basic~ STR_VAR group = ~group_itm_slot_%target_name%~       RET_ARRAY temporary_groups END END
                 ~igr~   BEGIN
                     PATCH_MATCH ~%target_name%~
