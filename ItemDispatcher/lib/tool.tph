@@ -289,6 +289,19 @@ BEGIN
 	END
 END
 
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#count~
+    STR_VAR
+        array = ~~
+    RET
+        count
+BEGIN
+	OUTER_SET count = 0
+
+	ACTION_PHP_EACH ~%array%~ AS entry => _ BEGIN
+		OUTER_SET count += 1
+	END
+END
+
 DEFINE_DIMORPHIC_FUNCTION ~tool#array#clone~
     STR_VAR
         array = ~~
