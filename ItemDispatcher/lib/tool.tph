@@ -461,3 +461,34 @@ BEGIN
         END
     BUT_ONLY
 END
+
+DEFINE_DIMORPHIC_FUNCTION ~tool#item#flags~
+    INT_VAR
+        identified = 1
+        droppable = 0
+        stealable = 0
+        weidu = 0
+    RET
+        flags
+BEGIN
+    ACTION_IF weidu == 1 BEGIN
+        OUTER_SPRINT flags ~IDENTIFIED~
+
+        ACTION_IF stealable == 0 BEGIN
+            OUTER_SPRINT flags ~%flags%&UNSTEALABLE~
+        END
+        ACTION_IF droppable == 0 BEGIN
+            OUTER_SPRINT flags ~%flags%&UNDROPPABLE~
+        END
+    END
+    ELSE BEGIN
+        OUTER_SET flags = 1 // IDENTIFIED
+
+        ACTION_IF stealable == 0 BEGIN
+            OUTER_SET flags += 2 // NONSTEALABLE
+        END
+        ACTION_IF droppable == 0 BEGIN
+            OUTER_SET flags += 8 // NONDROPABLE
+        END
+    END
+END
