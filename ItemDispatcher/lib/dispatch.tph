@@ -1,9 +1,13 @@
 DEFINE_ACTION_MACRO ~dispatch#run~
 BEGIN
+    ACTION_TIME ~dispatch#prepare~ BEGIN
     PRINT ~Préparation des distributions...~ SILENT
     LAM ~dispatch#prepare~
+    END
+    ACTION_TIME ~dispatch#apply~ BEGIN
     PRINT ~Distribution des objets...~ SILENT
     LAM ~dispatch#apply~
+    END
 END
 
 DEFINE_ACTION_MACRO ~dispatch#prepare~
@@ -11,76 +15,188 @@ BEGIN
     COPY ~%workspace%/items.2da~ ~override~
         READ_2DA_ENTRIES_NOW ~rows~ 14
         FOR (row = 0; row < rows; ++row) BEGIN
-            PATCH_TRY
-                READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
-                READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item_per_target
-                READ_2DA_ENTRY_FORMER ~rows~ row  2 row_stack_size
-                READ_2DA_ENTRY_FORMER ~rows~ row  3 row_item
-                READ_2DA_ENTRY_FORMER ~rows~ row  4 row_target_quantity
-                READ_2DA_ENTRY_FORMER ~rows~ row  5 row_target
-                READ_2DA_ENTRY_FORMER ~rows~ row  6 row_source
-                READ_2DA_ENTRY_FORMER ~rows~ row  7 row_chapter
-                READ_2DA_ENTRY_FORMER ~rows~ row  8 row_difficulty
-                READ_2DA_ENTRY_FORMER ~rows~ row  9 row_equipable
-                READ_2DA_ENTRY_FORMER ~rows~ row 10 row_stealable
-                READ_2DA_ENTRY_FORMER ~rows~ row 11 row_droppable
-                READ_2DA_ENTRY_FORMER ~rows~ row 12 row_chance
-                READ_2DA_ENTRY_FORMER ~rows~ row 13 mod_name
+            PATCH_TIME ~item_row_%row%~ BEGIN
+                PATCH_TRY
+                    READ_2DA_ENTRY_FORMER ~rows~ row  0 row_item_quantity
+                    READ_2DA_ENTRY_FORMER ~rows~ row  1 row_item_per_target
+                    READ_2DA_ENTRY_FORMER ~rows~ row  2 row_stack_size
+                    READ_2DA_ENTRY_FORMER ~rows~ row  3 row_item
+                    READ_2DA_ENTRY_FORMER ~rows~ row  4 row_target_quantity
+                    READ_2DA_ENTRY_FORMER ~rows~ row  5 row_target
+                    READ_2DA_ENTRY_FORMER ~rows~ row  6 row_source
+                    READ_2DA_ENTRY_FORMER ~rows~ row  7 row_chapter
+                    READ_2DA_ENTRY_FORMER ~rows~ row  8 row_time_of_day
+                    READ_2DA_ENTRY_FORMER ~rows~ row  9 row_difficulty
+                    READ_2DA_ENTRY_FORMER ~rows~ row 10 row_equipable
+                    READ_2DA_ENTRY_FORMER ~rows~ row 11 row_stealable
+                    READ_2DA_ENTRY_FORMER ~rows~ row 12 row_droppable
+                    READ_2DA_ENTRY_FORMER ~rows~ row 13 row_chance
+                    READ_2DA_ENTRY_FORMER ~rows~ row 14 mod_name
 
-                CLEAR_ARRAY chapters
-                CLEAR_ARRAY difficulties
-                CLEAR_ARRAY targets
+                    CLEAR_ARRAY targets
 
-                LPF ~tool#integer~  INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
-                LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~   RET item_quantity_is_percent = is_percent   item_quantity = quantity END
-                // TODO: lire la source
+                    LPF ~tool#boolean~  INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
+                    LPF ~tool#boolean~  INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
+                    LPF ~tool#boolean~  INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
+                    LPF ~tool#integer~  INT_VAR default = 100 min = 1 max = 100 STR_VAR value = ~%row_chance%~ RET chance = integer END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_item_per_target%~ RET item_per_target = quantity END
+                    LPF ~tool#quantity~ STR_VAR value = ~%row_stack_size%~  RET stack_size_is_percent = is_percent stack_size = quantity END
+                    LPF ~dispatch#extract#area~ STR_VAR string = ~%row_target%~ RET area END
 
-                LPF ~selector#item#get~ INT_VAR count = item_quantity count_is_percent = item_quantity_is_percent STR_VAR target = ~%row_item%~ RET count_items RET_ARRAY items END
+                    // TODO: lire la source et la valider
 
-                PATCH_PHP_EACH ~items~ AS _ => item BEGIN
-                    PATCH_IF RANDOM(1 100) <= chance BEGIN
-                        LPF ~tool#boolean~        INT_VAR default = 0 STR_VAR value = ~%row_equipable%~ RET equipable = boolean END
-                        LPF ~tool#quantity~ STR_VAR value = ~%row_target_quantity%~ RET target_quantity_is_percent = is_percent target_quantity = quantity END
-                        LPF ~selector#target#get~ INT_VAR count = target_quantity count_is_percent = target_quantity_is_percent item_is_equipable = equipable STR_VAR target = ~%row_target%~ item RET count_targets RET_ARRAY targets END
+                    SET target_quantity_per_item_base = 1
+
+                    // Cas où l'on veut donner un objet différent pour chaque cible potentielle.
+                    // Le nombre d'objets est déterminé selon le nombre de cibles potentielles.
+                    // Si le nombre de cibles est plus grand que le nombre d'objets disponible, un même objet sera distribué à plusieurs cibles différentes de manière proportionnelle.
+                    // Ex: 100 cibles pour 20 objets, chaque objet sera distribués à 5 cibles différentes.
+                    PATCH_IF ~%row_item_quantity%~ STRING_EQUAL ~#~ BEGIN
+                        LPF ~selector#target#count~ INT_VAR count = target_quantity count_is_percent = target_quantity_is_percent item_is_equipable = equipable item_count = item_per_target STR_VAR target = ~%row_target%~ item RET target_quantity = count_targets END
+                        LPF ~selector#item#count~ INT_VAR count = 100 count_is_percent = 1 STR_VAR target = ~%row_item%~ RET item_quantity = count_items END
+
+                        PATCH_IF target_quantity > item_quantity BEGIN
+                            SET target_quantity_per_item_base = target_quantity / item_quantity
+                        END
+
+                        SET target_quantity_is_percent = 0
+                        SET item_quantity_is_percent = 0
+                    END
+                    ELSE BEGIN
+                        LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
+                    END
+
+                    PATCH_IF equipable == 1 BEGIN
+                        SET item_per_target = 1
+                    END
+
+                    LPF ~selector#item#get~ INT_VAR count = item_quantity count_is_percent = item_quantity_is_percent STR_VAR target = ~%row_item%~ RET count_items RET_ARRAY items END
+
+                    PATCH_PHP_EACH ~items~ AS _ => item BEGIN
+                        SPRINT cre_item_slot ~inv~
 
                         INNER_ACTION BEGIN
                             COPY_EXISTING ~%item%~ ~override~
+                                READ_SHORT 0x1c category
                                 READ_SHORT 0x38 max_stack_size
                             BUT_ONLY
                         END
 
+                        // On détermine dans quel slot l'objet devra être ajouté
+                        PATCH_IF equipable == 1 BEGIN
+                            LPF ~data#load#cre_item_slot~ INT_VAR category RET cre_item_slot END
+                        END
+
+                        PATCH_IF ~%row_item_quantity%~ STRING_EQUAL ~#~ BEGIN
+                            PATCH_IF (item_quantity * target_quantity_per_item_base) < target_quantity BEGIN
+                                SET target_quantity_per_item = target_quantity_per_item_base + 1
+                            END
+                            ELSE BEGIN
+                                SET target_quantity_per_item = target_quantity_per_item_base
+                            END
+
+                            // TODO: Une optimisation possible serait d'indiquer à la fonction de se baser sur un tableau
+                            //       bien précis et non pas sur les tableaux contenant l'ensemble des cibles (group_cre_all)
+                            //       Le tableau en question serait le tableau targets d'une précédente itération
+                            //       Problème, comment savoir si c'est cre, sto ou cnt
+                            //       => Avoir une fonction qui sait déterminer le type que "%row_target" vise (cre, stro ou cnt)
+                            //       On pourrait ainsi optimiser tous les appels à  ~selector#target#get~ car on ne travaillera que sur un tableau au lieu de 3 !
+                            LPF ~selector#target#get~ INT_VAR count = target_quantity_per_item count_is_percent = target_quantity_is_percent item_is_equipable = equipable item_count = item_per_target STR_VAR target = ~%row_target%~ item RET count_targets RET_ARRAY targets END
+
+                            SET target_quantity -= target_quantity_per_item
+                            SET item_quantity -= 1
+                        END
+                        ELSE BEGIN
+                            LPF ~selector#target#get~ INT_VAR count = target_quantity count_is_percent = target_quantity_is_percent item_is_equipable = equipable item_count = item_per_target STR_VAR target = ~%row_target%~ item RET count_targets RET_ARRAY targets END
+                        END
+
                         PATCH_PHP_EACH targets AS _ => target BEGIN
-                            LPF ~tool#quantity~ STR_VAR value = ~%row_item_per_target%~ RET item_per_target_is_percent = is_percent item_per_target = quantity END
-                            LPF ~tool#quantity~ STR_VAR value = ~%row_stack_size%~  RET stack_size_is_percent = is_percent  stack_size = quantity END
-                            LPF ~tool#boolean~  INT_VAR default = 0 STR_VAR value = ~%row_stealable%~ RET stealable = boolean END
-                            LPF ~tool#boolean~  INT_VAR default = 1 STR_VAR value = ~%row_droppable%~ RET droppable = boolean END
-                            LPF ~tool#values~   INT_VAR min = 1 max = 22 STR_VAR value = ~%row_chapter%~   RET count_chapter = count    RET_ARRAY chapters = values END
-                            LPF ~tool#values~   INT_VAR min = 1 max = 5 STR_VAR value = ~%row_difficulty%~ RET count_difficulty = count RET_ARRAY difficulties = values END
+                            PATCH_IF RANDOM(1 100) <= chance BEGIN
+                                SPRINT target_type ~~
 
-                            PATCH_IF stack_size_is_percent == 0 AND max_stack_size < stack_size BEGIN
-                                SET stack_size = max_stack_size
+                                PATCH_IF ~%row_item_quantity%~ STRING_EQUAL ~#~ BEGIN
+                                    // On fait en sorte que la cible ne soit plus sélectionnée aux itérations suivantes
+                                    SPRINT ~row_target~ ~%row_target%&!%target%~
+                                END
+
+                                PATCH_IF stack_size_is_percent == 0 AND max_stack_size < stack_size BEGIN
+                                    SET stack_size = max_stack_size
+                                END
+                                PATCH_IF stack_size < 1 BEGIN
+                                    SET stack_size = 1
+                                END
+
+                                INNER_PATCH_SAVE target "%target%" BEGIN
+                                    REPLACE_EVALUATE ~^\(.*\)\.\(cre\|sto\|cnt\)$~ BEGIN
+                                        SPRINT target_type ~%MATCH2%~
+                                    END
+                                    "%MATCH1%"
+                                END
+
+                                SPRINT ~condition~ ~%row_chapter%#%row_time_of_day%#%row_difficulty%#%area%~
+
+                                PATCH_MATCH ~%target_type%~
+                                WITH
+                                    ~cre~ BEGIN
+                                        SET two_handed = VARIABLE_IS_SET $group_itm_two_handed(~%item%~) ? 1 : 0
+
+                                        PATCH_IF NOT VARIABLE_IS_SET $dispatch_cre(~%target%~) BEGIN
+                                            SET $dispatch_cre(~%target%~) = 0
+                                        END
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_cre_%target%~(~%cre_item_slot%~) BEGIN
+                                            SET $~dispatch_cre_%target%~(~%cre_item_slot%~) = 0
+                                        END
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_cre_%target%_%cre_item_slot%~(~%condition%~) BEGIN
+                                            SET $~dispatch_cre_%target%_%cre_item_slot%~(~%condition%~) = 0
+                                        END
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_cre_%target%_%cre_item_slot%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~ ~%two_handed%~) BEGIN
+                                            SET $~dispatch_cre_%target%_%cre_item_slot%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~ ~%two_handed%~) = 0
+                                        END
+
+                                        SET $dispatch_cre(~%target%~) += item_per_target
+                                        SET $~dispatch_cre_%target%~(~%cre_item_slot%~) += item_per_target
+                                        SET $~dispatch_cre_%target%_%cre_item_slot%~(~%condition%~) += item_per_target
+
+                                        PATCH_IF equipable == 1 BEGIN
+                                            SET $~dispatch_cre_%target%_%cre_item_slot%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~ ~%two_handed%~) = item_per_target
+                                        END
+                                        ELSE BEGIN
+                                            SET $~dispatch_cre_%target%_%cre_item_slot%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~ ~%two_handed%~) += item_per_target
+                                        END
+
+                                        // On adapte les emplacements d'inventaire disponibles pour les prochaines itérations
+                                        PATCH_IF ~%cre_item_slot%~ STRING_EQUAL_CASE ~inv~ BEGIN
+                                            SET empty_inventory_slots_before = $group_cre_empty_inventory_slots(~%target%.cre~)
+                                            SET empty_inventory_slots_after = empty_inventory_slots_before - item_per_target
+                                            SET $group_cre_empty_inventory_slots(~%creature%~) = empty_inventory_slots_after
+                                            SET $group_count(~group_cre_empty_inventory_slots_%empty_inventory_slots_before%~) -= 1
+                                            SET $group_count(~group_cre_empty_inventory_slots_%empty_inventory_slots_after%~) += 1
+                                        END
+                                    END
+                                    ~sto~ BEGIN
+                                        PATCH_IF NOT VARIABLE_IS_SET $dispatch_sto(~%target%~) BEGIN
+                                            SET $dispatch_sto(~%target%~) = 0
+                                        END
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_sto_%target%~(~%condition%~) BEGIN
+                                            SET $~dispatch_sto_%target%~(~%condition%~) = 0
+                                        END
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) BEGIN
+                                            SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) = 0
+                                        END
+
+                                        SET $dispatch_sto(~%target%~) += 1
+                                        SET $~dispatch_sto_%target%~(~%condition%~) += 1
+                                        SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) += item_per_target
+                                    END
+                                    DEFAULT LPF ~log#add#error~ STR_VAR message = ~Not supported target type (%target_type%)~ END
+                                END
                             END
-                            PATCH_IF stack_size < 1 BEGIN
-                                SET stack_size = 1
-                            END
-
-                            // TODO: Si un même objet est distribué plusieurs fois à la même cible, vérifier ses stacks
-                            //       Eventuellement additionner les stack_size pour limiter le nombre de piles données
-                            // Ex: On donne 3 piles de flèche (limité à 80 stacks de base)
-                            //     - Pile 1 : 60 stacks
-                            //     - Pile 2 : 20 stacks
-                            //     - Pile 3 : 20 stacks
-                            //     Resultat final : 1 pile de 80 et 1 pile de 20
-
-                            PATCH_PRINT "Distribution de %item_per_target% pile(s) de %stack_size% de %item% vers %target% (equipable : %equipable% - volable : %stealable% - droppable : %droppable%)"
-                            // TODO: Placer toutes les distributions validées dans des tableaux
-                            // A la fin, ces tableaux seront traités pour agir réellement sur le jeu
-                            // Ceci, afin de pouvoir gérer le fait qu'une même créature puisse avoir plusieurs objets aléatoires sur le même emplacement
                         END
                     END
+                WITH
+                    DEFAULT LPF ~log#add#error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
                 END
-            WITH
-                DEFAULT LPF ~log#add#error~ STR_VAR message = ~items.2da on line %row% : %ERROR_MESSAGE%~ END
             END
         END
     BUT_ONLY
@@ -88,4 +204,927 @@ END
 
 DEFINE_ACTION_MACRO ~dispatch#apply~
 BEGIN
+    PRINT ~Distribution aux créatures...~ SILENT
+
+    // Initialisation des chaînes servant à créer les blocks de script
+    COPY - ~%MOD_FOLDER%/baf/slot_condition.baf~ nowhere READ_ASCII 0 slot_condition (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_negative.baf~ nowhere READ_ASCII 0 slot_condition_negative (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_negative_response_base.baf~ nowhere READ_ASCII 0 slot_condition_negative_response_base (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_negative_response_empty.baf~ nowhere READ_ASCII 0 slot_condition_negative_response_empty (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_negative_response_random.baf~ nowhere READ_ASCII 0 slot_condition_negative_response_random (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_random.baf~ nowhere READ_ASCII 0 slot_condition_random (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_condition_response.baf~ nowhere READ_ASCII 0 slot_condition_response (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_random.baf~ nowhere READ_ASCII 0 slot_random (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/slot_random_response.baf~ nowhere READ_ASCII 0 slot_random_response (SOURCE_SIZE) BUT_ONLY
+
+    ACTION_PHP_EACH ~dispatch_cre~ AS cre => value BEGIN
+        OUTER_SET index_dispatchs = 0
+        OUTER_SET index_responses = 0
+        ACTION_PHP_EACH ~dispatch_cre_%cre%~ AS slot => count_by_slot BEGIN
+            ACTION_IF ~%slot%~ STRING_EQUAL ~inv~ BEGIN
+                LAF ~dispatch#apply#creature#add_to_inventory~ STR_VAR creature = ~%cre%~ RET index_responses index_dispatchs END
+            END ELSE BEGIN
+                LAF ~dispatch#apply#creature#add_to_equipment~ STR_VAR creature = ~%cre%~ slot RET index_responses index_dispatchs END
+            END
+        END
+    END
+
+    PRINT ~Distribution aux magasins...~ SILENT
+
+    ACTION_PHP_EACH ~dispatch_sto~ AS sto => value BEGIN
+        PRINT "Objets à distribuer au magasin %sto% : %value%"
+        ACTION_PHP_EACH ~dispatch_sto_%sto%~ AS condition => value BEGIN
+            PRINT ">> Avec comme condition %condition% : %value%"
+            ACTION_PHP_EACH ~dispatch_sto_%sto%_%condition%~ AS data => item_per_target BEGIN
+                OUTER_SPRINT item ~%data_0%~
+                OUTER_SPRINT stack_size ~%data_1%~
+                OUTER_SPRINT stealable ~%data_2%~
+                OUTER_SPRINT droppable ~%data_3%~
+                OUTER_SPRINT source ~%data_4%~
+                OUTER_SPRINT chapter ~%data_5%~
+                OUTER_SPRINT time_of_day ~%data_6%~
+                OUTER_SPRINT difficulty ~%data_7%~
+                OUTER_SPRINT target ~%sto%~
+
+                PRINT "   Distribution de %item_per_target% pile(s) de %stack_size% de %item% vers %target%.sto (S: %stealable% - D: %droppable%)"
+
+                LAF ~log#add#debug~ STR_VAR message = ~Dispatch : Ajout de %item_per_target% pile(s) de %stack_size% de %item% dans le magasin %target%~ END
+            END
+        END
+    END
+
+    /*
+    creature source  -> DELETE_CRE_ITEM
+    magasin source   -> DELETE_STORE_ITEM | REMOVE_STORE_ITEM_EX
+    conteneur source -> DELETE_AREA_ITEM ? Ne semble pas pouvoir viser un conteneur particulier
+    creature ->
+       chapitre   -> ADD_CRE_EFFECT avec opcode qui vérifie chapitre ?
+                     136 = ~si le chapitre en cours est supérieur ou égal au %value%~
+                     137 = ~si le chapitre en cours est inférieur à %value%~
+                     Global("Chapter","GLOBAL",3)
+                     GlobalGT("Chapter","GLOBAL",3)
+                     GlobalLT("Chapter","GLOBAL",3)
+       difficulté -> ADD_CRE_EFFECT avec opcode qui vérifie difficulté ?
+                     0x40D0 Difficulty(I:Amount*DIFFLEV)
+                     0x40D1 DifficultyGT(I:Amount*DIFFLEV)
+                     0x40D2 DifficultyLT(I:Amount*DIFFLEV)
+                     Créature invisible avec script, qui est détruite que si tout a été distribué
+                     Ex: Une créature doit donner au chapitre 1 et 2, elle ne sera détruite que si 1 et 2 sont donnés
+                         Une créature par zone avec un script qui tourne
+       simple     -> REPLACE_CRE_ITEM (slot d'équipement) ou ADD_CRE_ITEM (slot d'inventaire) (Voir aussi ADD_CRE_ITEM_FLAGS|SET_CRE_ITEM_FLAGS)
+    magasin  ->
+       chapitre   -> Via dialogue de la créature vendeuse ? Modifier les dialogues pour ouvrir magasin spécifique au chapitre... Dupliquer bloc d'ouverture le copier et ajouter condition de chapitre/difficulté aux 2 (ou +) blocs
+       difficulté -> Via dialogue de la créature vendeuse ?
+                     AddStoreItem et RemoveStoreItem
+       simple     -> ADD_STORE_ITEM | ADD_STORE_ITEM_EX | REMOVE_STORE_ITEM
+    conteneur
+       chapitre   -> Via script du conteneur ?
+       difficulté -> Via script du conteneur ?
+       simple     -> ADD_AREA_ITEM
+    area actors       -> script spécifique à assigner/modifier via la zone
+    area spawn points -> script spécifique à assigner aux créatures qui vérifie la zone où elle se trouve
+    area containers   -> ADD_AREA_ITEM / REPLACE_AREA_ITEM
+    */
+    // TODO: Avoir une option du mod (et non de règle) pour déterminer le nombre maximum d'objets ajoutés dans une seule cible
+    // Exemple, max 2 objets dans l'invetaire d'une créature, si le mod veut en distribuer 5, alors il va créer 2 trésors aléatoires contenant une partie des objets à distribuer et éviter de distribuer 2 fois le même objet !
+
+    // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
+    // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
+    //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
+
+END
+
+DEFINE_ACTION_MACRO ~dispatch#read_data#creature~
+BEGIN
+    OUTER_SPRINT item ~%data_0%~
+    OUTER_SPRINT stack_size ~%data_1%~
+    OUTER_SPRINT stealable ~%data_2%~
+    OUTER_SPRINT droppable ~%data_3%~
+    OUTER_SPRINT source ~%data_4%~
+    OUTER_SPRINT chapter ~%data_5%~
+    OUTER_SPRINT time_of_day ~%data_6%~
+    OUTER_SPRINT difficulty ~%data_7%~
+    OUTER_SPRINT area ~%data_8%~
+    OUTER_SPRINT two_handed ~%data_9%~
+
+    OUTER_PATCH_SAVE ~item~ ~%item%~ BEGIN REPLACE_TEXTUALLY ~\.itm~ ~~ END
+END
+
+DEFINE_PATCH_FUNCTION ~dispatch#extract#area~
+    STR_VAR
+        string = ~~
+    RET
+        area
+BEGIN
+    SPRINT area ~~
+    LPF ~tool#string#explode~ STR_VAR string separator = ~&~ RET_ARRAY parts END
+    PATCH_PHP_EACH parts AS index => part BEGIN
+        PATCH_IF ~%part%~ STRING_MATCHES_REGEXP ~^.+\.are$~ == 0 BEGIN
+            SPRINT area ~%part%&~
+        END
+    END
+    INNER_PATCH_SAVE ~area~ ~%area%~ BEGIN REPLACE_TEXTUALLY ~&*$~ ~~ END
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#apply#creature#add_to_inventory~
+    STR_VAR
+        creature = ~~
+        condition = ~~
+    RET
+        index_responses
+        index_dispatchs
+BEGIN
+    OUTER_SET current = 1
+    OUTER_SET count_by_slot = $~dispatch_cre_%creature%~(~inv~)
+
+    // S'il reste moins de place dans l'inventaire que d'ojets à distribuer, suppression d'objets aléatoires
+    // TODO: Au lieu de supprimer aléatoirement des objets, générer des trésors aléatoires afin que tous les objets à
+    //       distribuer aient une chance d'apparaitre en jeu.
+    //       Ou distribuer les objets via le script, tout comme c'est fait pour les équipements
+    // TODO: Avoir une option pour limiter le nombre d'objets distribués à une seule créature, et générer des trésors
+    //       aléatoires regroupant plusieurs objets, ce qui limitera naturellement le nombre d'objets dans l'inventaire.
+    ACTION_IF $group_cre_empty_inventory_slots(~%creature%.cre~) < count_by_slot BEGIN
+        OUTER_SET number_of_items_to_remove = count_by_slot - $group_cre_empty_inventory_slots(~%creature%.cre~)
+        //OUTER_SET testCount = $group_cre_empty_inventory_slots(~%creature%.cre~)
+        //PRINT "Emplacements libres : %testCount% - Nombre dans le slot : %count_by_slot% - Nombre à supprimer : %number_of_items_to_remove%"
+        OUTER_WHILE number_of_items_to_remove > 0 BEGIN
+            OUTER_SET index_to_remove = RANDOM (1 count_by_slot)
+            OUTER_SET index = 1
+
+            ACTION_PHP_EACH ~dispatch_cre_%creature%_inv~ AS condition => value BEGIN
+                ACTION_PHP_EACH ~dispatch_cre_%creature%_inv_%condition%~ AS data => item_per_target BEGIN
+                    ACTION_IF index = index_to_remove BEGIN
+                        ACTION_IF item_per_target > 0 BEGIN
+                            OUTER_SET $dispatch_cre(~%creature%~) -= 1
+                            OUTER_SET $~dispatch_cre_%creature%~(~%slot%~) -= 1
+                            OUTER_SET $~dispatch_cre_%creature%_%slot%~(~%condition%~) -= 1
+                            OUTER_SET $~dispatch_cre_%creature%_%slot%_%condition%~(~%data_0%~ ~%data_1%~ ~%data_2%~ ~%data_3%~ ~%data_4%~ ~%data_5%~ ~%data_6%~ ~%data_7%~ ~%data_8%~ ~%data_9%~) -= 1
+                            OUTER_SET number_of_items_to_remove -= 1
+                        END
+                    END
+                    OUTER_SET index += 1
+                END
+            END
+        END
+    END
+
+    // Traitement des distributions non conditionnées en premier
+    ACTION_IF VARIABLE_IS_SET $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) AND $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) > 0 BEGIN
+        OUTER_SPRINT condition ~-#-#-#~
+        LAM ~dispatch#apply#creature#add_to_inventory#simple~
+    END
+
+    ACTION_PHP_EACH ~dispatch_cre_%cre%_%slot%~ AS condition => value BEGIN
+        ACTION_IF NOT ~%condition%~ STRING_EQUAL ~-#-#-#~ BEGIN
+            LAM ~dispatch#apply#creature#add_to_inventory#condition~
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_inventory#simple~
+BEGIN
+    OUTER_SET total = $~dispatch_cre_%creature%_inv~(~%condition%~)
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_inv_%condition%~ AS data => item_per_target BEGIN
+        ACTION_IF item_per_target > 0 BEGIN
+            LAM ~dispatch#read_data#creature~
+            COPY_EXISTING ~%creature%.cre~ ~override~
+                SET count_charge1 = stack_size
+                SET count_charge3 = 0
+                LPF ~tool#item#get_charges~ STR_VAR item RET count_charge2 = charge END
+                LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
+
+                FOR (number = 1; number <= item_per_target; ++number) BEGIN
+                    //TODO: ADD_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~inv~
+                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire de %creature%~ END
+                    SET current += 1
+                END
+            BUT_ONLY
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_inventory#condition~
+BEGIN
+    LAF ~dispatch#condition_to_trigger~ STR_VAR condition RET trigger negative_trigger END
+
+    ACTION_CLEAR_ARRAY ~response_blocks~
+    ACTION_CLEAR_ARRAY ~destroy_blocks~
+
+    OUTER_SET total = $~dispatch_cre_%creature%_inv~(~%condition%~)
+    OUTER_SET index_dispatchs += 1
+
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+        LAM ~dispatch#read_data#creature~
+        LAF ~tool#item#get_charges~ STR_VAR item RET charge END
+        LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        //TODO: Utiliser les variables des fichier .baf pour générer le code
+        //TODO: OUTER_SPRINT slot_random_response EVAL ~%slot_random_response%~
+        OUTER_SPRINT $response_blocks(~%index_responses%~) ~SetGlobal("IDD_%index_dispatchs%","LOCALS",1)%WNL%    GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)%WNL%    ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))%WNL%    Continue()~
+        OUTER_SPRINT $destroy_blocks(~%index_responses%~) ~SetGlobal("IDD_%index_dispatchs%","LOCALS",0)%WNL%    DestroyItem("%item%")%WNL%    Continue()~
+        OUTER_SET index_responses += 1
+
+        OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
+            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile conditionnée de %stack_size% %item% dans l'inventaire de %creature% (%condition%)~ END
+            OUTER_SET current += 1
+        END
+    END
+
+    LAF ~tool#array#count~ STR_VAR array = ~response_blocks~ RET count_responses = count END
+
+    ACTION_IF count_responses > 0 BEGIN
+        LAF ~dispatch#script#init~ INT_VAR script_index = $group_cre_all(~%creature%.cre~) STR_VAR script = $bcs_creature(~%creature%.cre~) RET script_name END
+
+        OUTER_SPRINT responses ~~
+        OUTER_SPRINT negative_block ~~
+        OUTER_SPRINT destroy_blocks ~~
+        OUTER_SET response_weight = 100 / count_responses
+
+        ACTION_IF count_responses == 1 BEGIN
+            ACTION_PHP_EACH ~response_blocks~ AS response_index => response BEGIN
+                OUTER_SPRINT responses ~%responses%  RESPONSE #%response_weight%%WNL%    %response%%WNL%~
+            END
+            ACTION_PHP_EACH ~destroy_blocks~ AS response_index => block BEGIN
+                OUTER_SPRINT negative_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",1)%WNL%  %negative_trigger%%WNL%THEN%WNL%  RESPONSE #100%WNL%    %block%%WNL%END%WNL%~
+            END
+        END
+        ELSE BEGIN
+            OUTER_SPRINT negative_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",1)%WNL%  %negative_trigger%%WNL%THEN%WNL%  RESPONSE #100%WNL%    SetGlobal("IDD_%index_dispatchs%","LOCALS",2)%WNL%    Continue()%WNL%END~
+
+            ACTION_PHP_EACH ~response_blocks~ AS response_index => response BEGIN
+                OUTER_SPRINT responses ~%responses%  RESPONSE #%response_weight%%WNL%    SetGlobal("IDR_%response_index%","LOCALS",1)%WNL%    %response%%WNL%~
+            END
+            ACTION_PHP_EACH ~destroy_blocks~ AS response_index => block BEGIN
+                OUTER_SPRINT destroy_blocks ~%destroy_blocks%IF%WNL%  Global("IDR_%response_index%","LOCALS",1)%WNL%  Global("IDD_%index_dispatchs%","LOCALS",2)%WNL%THEN%WNL%  RESPONSE #100%WNL%    SetGlobal("IDR_%response_index%","LOCALS",0)%WNL%    %block%%WNL%END%WNL%~
+            END
+        END
+
+        OUTER_SPRINT positive_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",0)%WNL%  %trigger%%WNL%THEN%WNL%%responses%%WNL%END%WNL%~
+        OUTER_SPRINT script_code ~%positive_block%%WNL%%WNL%%negative_block%%WNL%%WNL%%destroy_blocks%~
+        PRINT "MULTIPLE %condition%:%WNL%%WNL%%script_code%"
+
+        /*
+
+<<<<<<<< .../inlined/script.baf
+%script_code%
+>>>>>>>>
+            TODO: EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~
+            */
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#apply#creature#add_to_equipment~
+    STR_VAR
+        creature = ~~
+        condition = ~~
+        slot = ~~
+    RET
+        index_responses
+        index_dispatchs
+BEGIN
+    OUTER_SET current = 1
+    OUTER_SET has_random_items = 0
+    OUTER_SPRINT blocks_redispatch_random ~~
+    OUTER_SPRINT slot_name $script_item_slots(~%slot%~)
+    OUTER_SET slot_id = IDS_OF_SYMBOL (~slots~ ~%slot_name%~)
+
+    // Traitement des distributions non conditionnées en premier
+    // Permettra aux distributions conditionnées de récupérer l'éventuel objet actuel de la cible
+    ACTION_IF VARIABLE_IS_SET $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) AND $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) > 0 BEGIN
+        OUTER_SPRINT condition ~-#-#-#~
+
+        LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_%slot%_-#-#-#~ RET count_items = count END
+
+        // Si un seul objet à distribuer pour ce slot, on l'ajoute directement dans le fichier .cre.
+        // Sinon, on distribue un des objets par script.
+        ACTION_IF count_items == 1 BEGIN
+            LAM ~dispatch#apply#creature#add_to_equipment#simple~
+        END
+        ELSE BEGIN
+            LAM ~dispatch#apply#creature#add_to_equipment#multiple~
+        END
+    END
+
+    ACTION_PHP_EACH ~dispatch_cre_%cre%_%slot%~ AS condition => value BEGIN
+        // TODO: Regrouper les élements avec volable+dropable+chapitre+difficulté
+        // TODO: DisplayString(I:STRREF*) // Pour debugger
+        ACTION_IF NOT ~%condition%~ STRING_EQUAL ~-#-#-#~ BEGIN
+            LAM ~dispatch#apply#creature#add_to_equipment#condition~
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#simple~
+BEGIN
+    OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+        ACTION_IF item_per_target > 0 BEGIN
+            LAM ~dispatch#read_data#creature~
+            COPY_EXISTING ~%creature%.cre~ ~override~
+                SET count_charge1 = stack_size
+                SET count_charge3 = 0
+                LPF ~tool#item#get_charges~ STR_VAR item RET count_charge2 = charge END
+                LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
+
+                PATCH_IF two_handed == 1 BEGIN
+                    //REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP TWOHANDED
+                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : Equipement de %stack_size% %item% dans le slot %slot% de %creature%~ END
+                END
+                ELSE BEGIN
+                    //REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP
+                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : Equipement de %stack_size% %item% dans le slot %slot% de %creature%~ END
+                END
+            BUT_ONLY
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#multiple~
+BEGIN
+    LAF ~log#add#debug~ STR_VAR message = ~Dispatch : PLUSIEURS equipements dans le slot %slot% de %creature%~ END
+    LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_%slot%_%condition%~ RET count_responses = count END
+
+    OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
+    OUTER_SET response_weight = 100 / count_responses
+    OUTER_SET has_random_items = 1
+    OUTER_SET index_dispatchs += 1
+    OUTER_SPRINT responses ~~
+
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+        LAM ~dispatch#read_data#creature~
+        LAF ~tool#item#get_charges~ STR_VAR item RET charge END
+        LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SPRINT responses EVAL ~%responses%%slot_random_response%~
+        OUTER_SPRINT block_redispatch_random EVAL ~%slot_condition_random%~
+        OUTER_SPRINT blocks_redispatch_random ~%blocks_redispatch_random%%block_redispatch_random%%WNL%~
+
+        OUTER_SET index_responses += 1
+
+        OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
+            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Equipement aléatoire de %stack_size% %item% dans le slot %slot% de %creature%~ END
+            OUTER_SET current += 1
+        END
+    END
+
+    OUTER_SPRINT block_dispatch_random EVAL ~%slot_random%~
+
+    PRINT ~%block_dispatch_random%~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#condition~
+BEGIN
+    LAF ~log#add#debug~ STR_VAR message = ~Dispatch : CONDITIONNEL equipements dans le slot %slot% de %creature%~ END
+    LAF ~dispatch#condition_to_trigger~ STR_VAR condition RET trigger negative_trigger END
+    LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_%slot%_%condition%~ RET count_responses = count END
+
+    ACTION_CLEAR_ARRAY ~response_blocks~
+    ACTION_CLEAR_ARRAY ~destroy_blocks~
+    ACTION_CLEAR_ARRAY ~redispatch_blocks~
+
+    OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
+    OUTER_SET index_dispatchs += 1
+    OUTER_SET index_reset_responses_trigger = index_responses
+    OUTER_SET response_weight = 100 / count_responses
+    OUTER_SPRINT responses ~~
+    OUTER_SPRINT negative_responses ~~
+    OUTER_SPRINT reset_responses_trigger ~~
+
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+        OUTER_SPRINT reset_responses_trigger ~%reset_responses_trigger%%WNL%    SetGlobal("IDR#%index_reset_responses_trigger%","LOCALS",0)~
+        OUTER_SET index_reset_responses_trigger += 1
+    END
+
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+        LAM ~dispatch#read_data#creature~
+        LAF ~tool#item#get_charges~ STR_VAR item RET charge END
+        LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SPRINT responses EVAL ~%responses%%slot_condition_response%~
+        OUTER_SET index_responses += 1
+
+        OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
+            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile conditionnée de %stack_size% %item% dans l'inventaire de %creature% (%condition%)~ END
+            OUTER_SET current += 1
+        END
+    END
+
+    ACTION_IF has_random_items == 1 BEGIN
+        OUTER_SPRINT negative_responses EVAL ~%negative_responses%%slot_condition_negative_response_random%~
+    END
+    ELSE BEGIN
+        LAF ~dispatch#creature#get_item_in_slot~ STR_VAR creature slot RET base_item = item base_flags = flags base_charges1 = charges1 base_charges2 = charges2 base_charges3 = charges3 END
+        ACTION_IF ~%base_item%~ STRING_EQUAL ~~ BEGIN
+            OUTER_SPRINT negative_responses EVAL ~%negative_responses%%slot_condition_negative_response_empty%~
+        END
+        ELSE BEGIN
+            OUTER_SPRINT negative_responses EVAL ~%negative_responses%%slot_condition_negative_response_base%~
+        END
+    END
+
+    OUTER_SPRINT block_dispatch_condition EVAL ~%slot_condition%~
+    OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
+
+    PRINT ~%block_dispatch_condition%~
+    PRINT ~%block_negative_condition%~
+    ACTION_IF has_random_items == 1 BEGIN
+        PRINT ~%blocks_redispatch_random%~
+    END
+    FAIL ~TEST~
+
+    OUTER_SPRINT script_code ~%positive_block%%WNL%%WNL%%negative_block%%WNL%%WNL%%destroy_blocks%%WNL%%WNL%%redispatch_blocks%~
+    PRINT "(%count_responses%) %condition%:%WNL%%WNL%%script_code%"
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#condition_to_trigger~
+    STR_VAR
+        condition = ~~
+    RET
+        trigger
+        negative_trigger
+BEGIN
+    LAF ~tool#string#explode~ STR_VAR string = ~%condition%~ separator = ~#~ RET_ARRAY parts END
+    OUTER_SPRINT chapter ~%parts_0%~
+    OUTER_SPRINT time_of_day ~%parts_1%~
+    OUTER_SPRINT difficulty ~%parts_2%~
+    OUTER_SPRINT area ~%parts_3%~
+    OUTER_SPRINT trigger ~~
+
+    LAF ~dispatch#serie_to_trigger~ INT_VAR min = 1 max = 22 STR_VAR serie = ~%chapter%~ macro = ~dispatch#list_to_trigger#chapter~ RET chapter_trigger = trigger chapter_negative_trigger = negative_trigger chapter_negative_trigger_count = negative_trigger_count END
+    LAF ~dispatch#serie_to_trigger~ INT_VAR min = 0 max = 3 STR_VAR serie = ~%time_of_day%~ macro = ~dispatch#list_to_trigger#time_of_day~ RET time_of_day_trigger = trigger time_of_day_negative_trigger = negative_trigger time_of_day_negative_trigger_count = negative_trigger_count END
+    LAF ~dispatch#serie_to_trigger~ INT_VAR min = 1 max = 5 STR_VAR serie = ~%difficulty%~ macro = ~dispatch#list_to_trigger#difficulty~ RET difficulty_trigger = trigger difficulty_negative_trigger = negative_trigger difficulty_negative_trigger_count = negative_trigger_count END
+    LAF ~dispatch#area_to_trigger~ STR_VAR area RET area_trigger = trigger area_negative_trigger = negative_trigger area_negative_trigger_count = negative_trigger_count END
+
+    OUTER_SET negative_trigger_count = 0
+    OUTER_SET negative_trigger_count += chapter_negative_trigger_count
+    OUTER_SET negative_trigger_count += time_of_day_negative_trigger_count
+    OUTER_SET negative_trigger_count += difficulty_negative_trigger_count
+    OUTER_SET negative_trigger_count += area_negative_trigger_count
+
+    OUTER_SPRINT trigger ~%chapter_trigger%%WNL%  %time_of_day_trigger%%WNL%  %difficulty_trigger%%WNL%  %area_trigger%~
+
+    ACTION_IF negative_trigger_count > 1 BEGIN
+        OUTER_SPRINT negative_trigger ~OR(%negative_trigger_count%)%WNL%    %chapter_negative_trigger%%WNL%    %time_of_day_negative_trigger%%WNL%    %difficulty_negative_trigger%%WNL%    %area_negative_trigger%~
+    END
+    ELSE BEGIN
+        OUTER_SPRINT negative_trigger ~%chapter_negative_trigger%%WNL%  %time_of_day_negative_trigger%%WNL%  %difficulty_negative_trigger%%WNL%  %area_negative_trigger%~
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#serie_to_trigger~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        serie = ~~
+        macro = ~~
+    RET
+        trigger
+        negative_trigger
+        negative_trigger_count
+BEGIN
+    OUTER_SPRINT trigger ~~
+    OUTER_SPRINT negative_trigger ~~
+    OUTER_SET negative_trigger_count = 0
+
+    ACTION_IF ~%serie%~ STRING_EQUAL ~-~ BEGIN
+    END
+    ELSE ACTION_IF ~%serie%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-\([0-9]+\)$~ == 0 BEGIN
+        OUTER_PATCH ~%serie%~ BEGIN
+            REPLACE_EVALUATE ~\([0-9]+\)-\([0-9]+\)~ BEGIN
+                SET value_min = MATCH1
+                SET value_max = MATCH2
+            END ~~
+        END
+        ACTION_IF value_min == min BEGIN
+            OUTER_SET value = value_max
+            LAM ~%macro%LT~
+        END
+        ELSE ACTION_IF value_max >= max BEGIN
+            OUTER_SET value = value_min
+            LAM ~%macro%GT~
+        END
+        ELSE BEGIN
+            OUTER_SET value_min -= 1
+            OUTER_SET value_max += 1
+            LAM ~%macro%Between~
+        END
+    END
+    ELSE ACTION_IF ~%serie%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)\+$~ == 0 BEGIN
+        OUTER_PATCH_SAVE ~value~ ~%serie%~ BEGIN REPLACE_TEXTUALLY ~\+~ ~~ END
+        OUTER_SET value -= 1
+        LAM ~%macro%GT~
+    END
+    ELSE ACTION_IF ~%serie%~ STRING_MATCHES_REGEXP ~^\([0-9]+\)-$~ == 0 BEGIN
+        OUTER_PATCH_SAVE ~value~ ~%serie%~ BEGIN REPLACE_TEXTUALLY ~-~ ~~ END
+        OUTER_SET value += 1
+        LAM ~%macro%LT~
+    END
+    ELSE ACTION_IF IS_AN_INT serie BEGIN
+        OUTER_SET value = serie
+        LAM ~%macro%~
+    END
+    ELSE BEGIN
+        LAF ~dispatch#list_to_trigger~ INT_VAR invert = 0 min max STR_VAR serie macro RET trigger trigger_count = count END
+        LAF ~dispatch#list_to_trigger~ INT_VAR invert = 1 min max STR_VAR serie macro RET negative_trigger = trigger negative_trigger_count = count END
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#area_to_trigger~
+    STR_VAR
+        area = ~~
+    RET
+        trigger
+        negative_trigger
+        negative_trigger_count
+BEGIN
+    OUTER_SPRINT trigger ~~
+    OUTER_SPRINT negative_trigger ~~
+    OUTER_SET negative_trigger_count = 0
+
+    //TODO: !ar0602.are ar0602.are
+    ACTION_IF STRING_LENGTH ~%area%~ > 0 BEGIN
+        OUTER_PATCH ~%area%~ BEGIN
+            REPLACE_EVALUATE ~\(!?\)\([a-z0-9_#]+\)\.are~ BEGIN
+                SET negative_trigger_count = 1
+                SET is_negative = ~%MATCH1%~ STRING_EQUAL ~!~
+                SPRINT area_name ~%MATCH2%~
+
+                PATCH_IF is_negative == 0 BEGIN
+                    SPRINT trigger ~AreaCheck("%area_name%")~
+                    SPRINT negative_trigger ~!AreaCheck("%area_name%")~
+                END
+                ELSE BEGIN
+                    SPRINT trigger ~!AreaCheck("%area_name%")~
+                    SPRINT negative_trigger ~AreaCheck("%area_name%")~
+                END
+            END ~~
+        END
+    END
+END
+
+DEFINE_ACTION_FUNCTION ~dispatch#list_to_trigger~
+    INT_VAR
+        invert = 0
+        min = 0
+        max = 0
+    STR_VAR
+        serie = ~~
+        function = ~~
+        macro = ~~
+    RET
+        trigger
+        count
+BEGIN
+    OUTER_SET start = ~-1~
+    OUTER_SET end = 0
+    OUTER_SET count = 0
+    OUTER_SPRINT trigger ~~
+
+    ACTION_CLEAR_ARRAY ~values~
+    ACTION_CLEAR_ARRAY ~parts~
+    ACTION_CLEAR_ARRAY ~temp_parts~
+    ACTION_CLEAR_ARRAY ~inverted_parts~
+
+    LAF ~tool#array#range~ INT_VAR min max STR_VAR value = ~%min%-%max%~ RET count_array = count min max RET_ARRAY values END
+    LAF ~tool#string#explode~ INT_VAR to_key = 1 STR_VAR string = ~%serie%~ separator = ~|~ RET count_array2 = count RET_ARRAY temp_parts = parts END
+
+    ACTION_IF invert == 1 BEGIN
+        LAF ~tool#array#diff~ STR_VAR array = ~values~ array2 = ~temp_parts~ RET parts_count = count RET_ARRAY parts = new_array END
+    END
+    ELSE BEGIN
+        LAF ~tool#array#intersect~ INT_VAR count_array count_array2 STR_VAR array = ~values~ array2 = ~temp_parts~ RET parts_count = count RET_ARRAY parts = new_array END
+    END
+
+
+    // TODO: Optimiser l'invert si on n'a qu'un seul élément dans "parts"
+    //       Il suffit de rajouter ! devant le trigger généré
+    // TODO: Optimiser , si "parts" contient toutes les valeurs possibles de "values", alors pas nécessaire de faire le traitement
+
+
+    ACTION_IF parts_count > 0 BEGIN
+        ACTION_SORT_ARRAY_INDICES ~parts~ NUMERICALLY
+        ACTION_PHP_EACH parts AS num => _ BEGIN
+            ACTION_IF NOT IS_AN_INT num BEGIN
+                FAIL ~Serie invalide : %serie%~
+            END
+            ACTION_IF start == ~-1~ BEGIN
+                OUTER_SET start = num
+                OUTER_SET end = num
+            END
+            ELSE ACTION_IF num == end + 1 BEGIN
+                OUTER_SET end = num
+            END
+            ELSE BEGIN
+                LAM ~dispatch#list_to_trigger~
+            END
+        END
+
+        LAM ~dispatch#list_to_trigger~
+    END
+
+    ACTION_IF invert == 0 AND count > 1 BEGIN
+        OUTER_SPRINT trigger ~OR(%count%) %trigger%~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger~
+BEGIN
+    ACTION_IF start == end BEGIN
+        OUTER_SET value = start
+        LAM ~%macro%~
+    END
+    ELSE ACTION_IF start == min BEGIN
+        OUTER_SET value = end + 1
+        LAM ~%macro%LT~
+    END
+    ELSE ACTION_IF end == max BEGIN
+        OUTER_SET value = start - 1
+        LAM ~%macro%GT~
+    END
+    ELSE BEGIN
+        OUTER_FOR (value = start; value <= end; ++value) BEGIN
+            LAM ~%macro%~
+        END
+    END
+    OUTER_SET start = num
+    OUTER_SET end = num
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#chapter~
+BEGIN
+    OUTER_SET count += 1
+    OUTER_SET negative_trigger_count += 1
+    OUTER_SPRINT trigger ~%trigger%Global("Chapter","GLOBAL",%value%) ~
+    OUTER_SPRINT negative_trigger ~%negative_trigger%!Global("Chapter","GLOBAL",%value%) ~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#chapterLT~
+BEGIN
+    OUTER_SET count += 1
+    OUTER_SET negative_trigger_count += 1
+    OUTER_SPRINT trigger ~%trigger%GlobalLT("Chapter","GLOBAL",%value%) ~
+    OUTER_SPRINT negative_trigger ~%negative_trigger%!GlobalLT("Chapter","GLOBAL",%value%) ~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#chapterGT~
+BEGIN
+    OUTER_SET count += 1
+    OUTER_SET negative_trigger_count += 1
+    OUTER_SPRINT trigger ~%trigger%GlobalGT("Chapter","GLOBAL",%value%) ~
+    OUTER_SPRINT negative_trigger ~%negative_trigger%!GlobalGT("Chapter","GLOBAL",%value%) ~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#chapterBetween~
+BEGIN
+    OUTER_SET negative_trigger_count += 2
+    OUTER_SPRINT trigger ~GlobalGT("Chapter","GLOBAL",%value_min%) GlobalLT("Chapter","GLOBAL",%value_max%) ~
+    OUTER_SPRINT negative_trigger ~%negative_trigger%!GlobalGT("Chapter","GLOBAL",%value_min%) !GlobalLT("Chapter","GLOBAL",%value_max%) ~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#difficulty~
+BEGIN
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_name ~difflev~ value
+    END
+    ACTION_IF NOT ~%difficulty_name%~ STRING_EQUAL ~%value%~ BEGIN
+        OUTER_SET count += 1
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT trigger ~%trigger%Difficulty(%difficulty_name%) ~
+        OUTER_SPRINT negative_trigger ~%negative_trigger%!Difficulty(%difficulty_name%) ~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#difficultyLT~
+BEGIN
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_name ~difflev~ value
+    END
+    ACTION_IF NOT ~%difficulty_name%~ STRING_EQUAL ~%value%~ BEGIN
+        OUTER_SET count += 1
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT trigger ~%trigger%DifficultyLT(%difficulty_name%) ~
+        OUTER_SPRINT negative_trigger ~%negative_trigger%!DifficultyLT(%difficulty_name%) ~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#difficultyGT~
+BEGIN
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_name ~difflev~ value
+    END
+    ACTION_IF NOT ~%difficulty_name%~ STRING_EQUAL ~%value%~ BEGIN
+        OUTER_SET count += 1
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT trigger ~%trigger%DifficultyGT(%difficulty_name%) ~
+        OUTER_SPRINT negative_trigger ~%negative_trigger%!DifficultyGT(%difficulty_name%) ~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#difficultyBetween~
+BEGIN
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_min_name ~difflev~ value_min
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_max_name ~difflev~ value_max
+    END
+    ACTION_IF NOT ~%difficulty_min_name%~ STRING_EQUAL ~%value_min%~ AND NOT ~%difficulty_max_name%~ STRING_EQUAL ~%value_max%~ BEGIN
+        OUTER_SPRINT trigger ~%trigger%DifficultyGT(%difficulty_min_name%) DifficultyLT(%difficulty_max_name%) ~
+    END
+
+    OUTER_SET negative_value_min = value_min + 1
+    OUTER_SET negative_value_max = value_max - 1
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_min_name ~difflev~ negative_value_min
+        LOOKUP_IDS_SYMBOL_OF_INT difficulty_max_name ~difflev~ negative_value_max
+    END
+    ACTION_IF NOT ~%difficulty_min_name%~ STRING_EQUAL ~%negative_value_min%~ BEGIN
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT negative_trigger ~%negative_trigger%DifficultyLT(%difficulty_min_name%) ~
+    END
+    ACTION_IF NOT ~%difficulty_max_name%~ STRING_EQUAL ~%negative_value_max%~ BEGIN
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT negative_trigger ~%negative_trigger%DifficultyGT(%difficulty_max_name%) ~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#time_of_day~
+BEGIN
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ value
+    END
+    ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%value%~ BEGIN
+        OUTER_SET count += 1
+        OUTER_SET negative_trigger_count += 1
+        OUTER_SPRINT trigger ~%trigger%TimeOfDay(%time_of_day_name%) ~
+        OUTER_SPRINT negative_trigger ~%negative_trigger%!TimeOfDay(%time_of_day_name%) ~
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#time_of_dayLT~
+BEGIN
+    OUTER_SET trigger_count = 0
+    OUTER_FOR (index = value - 1; index >= min; --index) BEGIN
+        OUTER_PATCH ~~ BEGIN
+            LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+        END
+        ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%index%~ BEGIN
+            OUTER_SET trigger_count += 1
+            OUTER_SPRINT trigger ~%trigger%TimeOfDay(%time_of_day_name%) ~
+        END
+    END
+
+    ACTION_IF trigger_count > 1 BEGIN
+        OUTER_SPRINT trigger ~OR(%trigger_count%) %trigger%~
+    END
+
+    OUTER_FOR (index = value; index <= max; ++index) BEGIN
+        OUTER_PATCH ~~ BEGIN
+            LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+        END
+        ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%index%~ BEGIN
+            OUTER_SET negative_trigger_count += 1
+            OUTER_SPRINT negative_trigger ~%negative_trigger%TimeOfDay(%time_of_day_name%) ~
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#time_of_dayGT~
+BEGIN
+    OUTER_SET trigger_count = 0
+    OUTER_FOR (index = value + 1; index <= max; ++index) BEGIN
+        OUTER_PATCH ~~ BEGIN
+            LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+        END
+        ACTION_IF NOT ~%difficulty_name%~ STRING_EQUAL ~%index%~ BEGIN
+            OUTER_SET trigger_count += 1
+            OUTER_SPRINT trigger ~%trigger%TimeOfDay(%time_of_day_name%) ~
+        END
+    END
+
+    ACTION_IF trigger_count > 1 BEGIN
+        OUTER_SPRINT trigger ~OR(%trigger_count%) %trigger%~
+    END
+
+    OUTER_FOR (index = value; index >= min; --index) BEGIN
+        OUTER_PATCH ~~ BEGIN
+            LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+        END
+        ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%index%~ BEGIN
+            OUTER_SET negative_trigger_count += 1
+            OUTER_SET count += 1
+            OUTER_SPRINT negative_trigger ~%negative_trigger%TimeOfDay(%time_of_day_name%) ~
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#list_to_trigger#time_of_dayBetween~
+BEGIN
+    OUTER_SET value_min += 1
+    OUTER_SET value_max -= 1
+    OUTER_PATCH ~~ BEGIN
+        LOOKUP_IDS_SYMBOL_OF_INT time_of_day_min_name ~timeoday~ value_min
+        LOOKUP_IDS_SYMBOL_OF_INT time_of_day_max_name ~timeoday~ value_max
+    END
+
+    ACTION_IF NOT ~%time_of_day_min_name%~ STRING_EQUAL ~%value_min%~ AND NOT ~%time_of_day_max_name%~ STRING_EQUAL ~%value_max%~ BEGIN
+        OUTER_SET trigger_count = 0
+        OUTER_FOR (index = value_min; index <= value_max; ++index) BEGIN
+            OUTER_PATCH ~~ BEGIN
+                LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+            END
+            ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%index%~ BEGIN
+                OUTER_SET trigger_count += 1
+                OUTER_SPRINT trigger ~%trigger%TimeOfDay(%time_of_day_name%) ~
+            END
+        END
+
+        ACTION_IF trigger_count > 1 BEGIN
+            OUTER_SPRINT trigger ~OR(%trigger_count%) %trigger%~
+        END
+
+        OUTER_FOR (index = min; index <= max; ++index) BEGIN
+            ACTION_IF index < value_min OR index > value_max BEGIN
+                OUTER_PATCH ~~ BEGIN
+                    LOOKUP_IDS_SYMBOL_OF_INT time_of_day_name ~timeoday~ index
+                END
+                ACTION_IF NOT ~%time_of_day_name%~ STRING_EQUAL ~%index%~ BEGIN
+                    OUTER_SET negative_trigger_count += 1
+                    OUTER_SPRINT negative_trigger ~%negative_trigger%TimeOfDay(%time_of_day_name%) ~
+                END
+            END
+        END
+    END
+END
+
+
+
+// Ajouter en condition
+// - la réputation de Player1
+// - l'or du groupe
+// - niveau d'expérience de Player1
+// - Niveau moyen du groupe : LevelParty()
+// - Mode cauchemard activé : NightmareModeOn()
+// Directement écrire la condition en WEIDU dans le .2da ?? Pratique mais risqué, plus devoir faire la condition inverse...
+
+
+DEFINE_ACTION_FUNCTION ~dispatch#script#init~
+    INT_VAR
+        script_index = 0
+    STR_VAR
+        script = ~~
+    RET script_name
+BEGIN
+    LAF ~tool#string#pad_left~ INT_VAR min_length = 6 STR_VAR string = ~%script_index%~ RET script_index = string END
+    OUTER_SPRINT script_name ~id%script_index%~
+
+    // On s'assure de copier l'éventuel script d'origine car plusieurs créatures peuvent se partager le même script.
+    // Et on veut éviter que l'objet soit distribué à toutes ces créatures
+    ACTION_IF NOT FILE_EXISTS ~%script_name%.bcs~ BEGIN
+        ACTION_IF FILE_EXISTS ~%script%.bcs~ BEGIN
+            COPY_EXISTING ~%script%.bcs~ ~%script_name%.bcs~
+        END
+        ELSE BEGIN
+            COPY ~.../inlined/blank~ ~%script_name%.bcs~
+        END
+    END
+END
+
+
+
+DEFINE_ACTION_FUNCTION ~dispatch#creature#get_item_in_slot~
+    STR_VAR
+        creature = ~~
+        slot = ~~
+    RET
+        item
+        flags
+        charges1
+        charges2
+        charges3
+BEGIN
+    OUTER_SPRINT item ~~
+    OUTER_SET flags = 0
+    OUTER_SET charges1 = 0
+    OUTER_SET charges2 = 0
+    OUTER_SET charges3 = 0
+
+    ACTION_IF FILE_EXISTS_IN_GAME ~%creature%.cre~ BEGIN
+        COPY_EXISTING ~%creature%.cre~ nowhere
+            READ_LONG  0x2b8 slot_offset
+            READ_LONG  0x2bc item_offset
+
+            PATCH_PHP_EACH ~cre_item_slots~ AS offset => match_slot BEGIN
+                PATCH_IF STRING_LENGTH ~%item%~ == 0 AND ~%slot%~ STRING_EQUAL ~%match_slot%~ BEGIN
+                    READ_SHORT (%slot_offset% + (%offset% * 0x02)) slot_value
+                    PATCH_IF (%slot_value% != 0xffff) BEGIN
+                        READ_ASCII (item_offset + (slot_value * 0x14)) item
+                        READ_LONG  (item_offset + (slot_value * 0x14) + 0x10) flags
+                        READ_SHORT  (item_offset + (slot_value * 0x14) + 0xa) charges1
+                        READ_SHORT  (item_offset + (slot_value * 0x14) + 0xc) charges2
+                        READ_SHORT  (item_offset + (slot_value * 0x14) + 0xe) charges3
+                    END
+                END
+            END
+        BUT_ONLY
+    END
 END

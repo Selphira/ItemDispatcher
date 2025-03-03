@@ -248,6 +248,7 @@ END
 DEFINE_PATCH_MACRO ~selector#target#filter~
 BEGIN
     INNER_ACTION BEGIN
+        // TODO: Traitement à faire que si on filtre des cibles de type "cre"
         COPY_EXISTING ~%item%~ ~override~
 		    READ_LONG  0x18 flags
             READ_SHORT 0x1c category
@@ -292,7 +293,32 @@ BEGIN
         BUT_ONLY
     END
 
-    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
+    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY tmp_parts = parts END
+
+    // Optimisation pour les cas où l'on veut écarter toute une série de cibles bien précises
+    // Ex: "gnome.rce&male.gnd&!npcs.grp&!udsvir07.cre&!quaylem.cre&!pptiax2.cre"
+    CLEAR_ARRAY ~parts~
+    CLEAR_ARRAY ~group_temporary~
+    SET $group_count(~group_temporary~) = 0
+    // TODO: Optimiser en testant group_type une seule fois, lorsque la fonction saura sur quoi travailler
+    PATCH_PHP_EACH tmp_parts AS index => part BEGIN
+        LPF ~selector#target#parse_part~ STR_VAR part RET is_negative group_name group_type END
+
+        PATCH_IF ~%group_type%~ STRING_EQUAL ~cre~ BEGIN
+            SET $group_temporary(~%group_name%.%group_type%~) = 1
+            SET $group_count(~group_temporary~) += 1
+        END
+        ELSE BEGIN
+            SPRINT $parts(~%index%~) ~%part%~
+        END
+    END
+
+    PATCH_IF $group_count(~group_temporary~) > 0 BEGIN
+        SPRINT group_name ~group_temporary~
+        SPRINT group_type ~grp~
+        LPM ~selector#target#filter_cre~
+    END
+    // Fin de l'optimisation
 
     PATCH_PHP_EACH parts AS index => part BEGIN
         SET $group_count(~group_temporary~) = 0

@@ -1,0 +1,6 @@
+IF
+  Global("IDD#%index_dispatchs%","LOCALS",1)
+  %negative_trigger%
+THEN
+%negative_responses%
+END

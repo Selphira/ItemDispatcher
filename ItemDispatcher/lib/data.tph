@@ -1,5 +1,6 @@
 DEFINE_ACTION_MACRO ~data#load~
 BEGIN
+    ACTION_TIME ~data#load~ BEGIN
     PRINT ~Chargement des créatures...~ SILENT
     LAM ~data#load#creatures~
     PRINT ~Chargement des objets...~ SILENT
@@ -8,6 +9,7 @@ BEGIN
     LAM ~data#load#stores~
     PRINT ~Chargement des zones...~ SILENT
     LAM ~data#load#areas~
+    END
 END
 
 /*
@@ -57,6 +59,7 @@ BEGIN
     LAF ~data#load#locked_slots~ RET_ARRAY group_count END
 
     OUTER_SET $group_count(~group_cre_all~) = 0
+    OUTER_SET load_index = 1
 
 	COPY_EXISTING_REGEXP GLOB ~^.+\.cre$~ ~override~
 	    SPRINT ~creature~ ~%SOURCE_FILE%~
@@ -65,6 +68,8 @@ BEGIN
         LPM ~data#load#creatures#data~
         LPM ~data#load#creatures#slots~
         LPM ~data#load#creatures#proficiencies~
+
+        SET load_index += 1
 	BUT_ONLY
 END
 
@@ -78,6 +83,7 @@ BEGIN
     READ_BYTE  0x23d constitution
     READ_BYTE  0x23e charisma
     READ_SHORT 0x246 kit
+    READ_ASCII 0x248 script
     READ_BYTE  0x271 general
     READ_BYTE  0x272 race
     READ_BYTE  0x273 class
@@ -102,6 +108,7 @@ BEGIN
     TO_LOWER gender_name
     TO_LOWER alignment_name
     TO_LOWER dialog
+    TO_LOWER script
 
     PATCH_IF NOT VARIABLE_IS_SET $group_count(~group_cre_kit_%kit_name%~) BEGIN
         PATCH_IF kit != 0 BEGIN
@@ -152,7 +159,7 @@ BEGIN
         SPRINT ~alignment_name~ ~none~
     END
 
-    SET $group_cre_all(~%creature%~) = 1
+    SET $group_cre_all(~%creature%~) = load_index
     SET $group_count(~group_cre_all~) += 1
 
     SET $~group_cre_kit_%kit_name%~(~%creature%~) = 1
@@ -198,7 +205,8 @@ BEGIN
     SET $group_count(~group_cre_charisma_%charisma%~) += 1
 
     SET $~cre_dialog_%dialog%~(~%creature%~) = 1
-    SET $~dlg_creature_%creature%~(~%dialog%~) = 1
+    SPRINT $dlg_creature(~%creature%~) ~%dialog%~
+    SPRINT $bcs_creature(~%creature%~) ~%script%~
 END
 
 DEFINE_PATCH_MACRO ~data#load#creatures#slots~
@@ -863,6 +871,34 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~cre_item_slots~ BEGIN
     18 => ~qitem~
     19 => ~qitem~
     20 => ~qitem~
+END
+
+ACTION_DEFINE_ASSOCIATIVE_ARRAY ~script_item_slots~ BEGIN
+    ~helmet~      => ~SLOT_HELMET~
+    ~armor~       => ~SLOT_ARMOR~
+    ~shield~      => ~SLOT_SHIELD~
+    ~gloves~      => ~SLOT_GAUNTLETS~
+    ~ring~        => ~SLOT_RING_LEFT~
+    ~left_ring~   => ~SLOT_RING_LEFT~
+    ~right_ring~  => ~SLOT_RING_RIGHT~
+    ~amulet~      => ~SLOT_AMULET~
+    ~belt~        => ~SLOT_BELT~
+    ~boots~       => ~SLOT_BOOTS~
+    ~weapon~      => ~SLOT_WEAPON0~
+    ~weapon1~     => ~SLOT_WEAPON0~
+    ~weapon2~     => ~SLOT_WEAPON1~
+    ~weapon3~     => ~SLOT_WEAPON2~
+    ~weapon4~     => ~SLOT_WEAPON3~
+    ~quiver~      => ~SLOT_AMMO0~
+    ~quiver1~     => ~SLOT_AMMO0~
+    ~quiver2~     => ~SLOT_AMMO1~
+    ~quiver3~     => ~SLOT_AMMO2~
+    ~quiver4~     => ~SLOT_AMMO3~
+    ~cloak~       => ~SLOT_CLOAK~
+    ~qitem~       => ~SLOT_MISC0~
+    ~quick_item1~ => ~SLOT_MISC0~
+    ~quick_item2~ => ~SLOT_MISC1~
+    ~quick_item3~ => ~SLOT_MISC2~
 END
 
 ACTION_DEFINE_ASSOCIATIVE_ARRAY ~store_types~ BEGIN

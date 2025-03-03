@@ -1,0 +1,7 @@
+  RESPONSE #100
+    SetGlobal("ID#%slot%","LOCALS",1)
+    SetGlobal("IDD#%index_dispatchs%","LOCALS",0)
+    %reset_responses_trigger%
+    ApplySpellRES("IDDES%slot_id%",Myself)
+    DisplayString(Myself,'Suppression objet du slot %slot%')
+    Continue()

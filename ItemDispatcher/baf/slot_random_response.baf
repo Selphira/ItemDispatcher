@@ -1,0 +1,9 @@
+  RESPONSE #%response_weight%
+    SetGlobal("ID#%slot%","LOCALS",1)
+    SetGlobal("IDR#%index_responses%","LOCALS",1)
+    ApplySpellRES("IDDES%slot_id%",Myself)
+    GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)
+    ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))
+    XEquipItem("%item%",MySelf,%slot_name%,EQUIP)
+    DisplayString(Myself,'Objet aleatoire du slot %slot% : %item%')
+    Continue()

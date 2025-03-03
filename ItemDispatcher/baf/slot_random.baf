@@ -1,0 +1,5 @@
+IF
+  Global("ID#%slot%","LOCALS",0)
+THEN
+%responses%
+END

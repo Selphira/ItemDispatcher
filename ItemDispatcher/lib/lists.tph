@@ -8,15 +8,17 @@ OUTER_TEXT_SPRINT ~regex_2da_files~ ~^.*\.2da$~
  */
 DEFINE_ACTION_FUNCTION ~lists#merge~
 BEGIN
-    PRINT ~Analyse des dossiers des mods...~ SILENT
-    ACTION_CLEAR_ARRAY ~folders~
-	GET_DIRECTORY_ARRAY ~folders~ ~.~ ~%regex_folders%~
-	ACTION_PHP_EACH ~folders~ AS _ => folder BEGIN
-        OUTER_TEXT_SPRINT ~dispatching_folder~ ~%folder%/dispatching~
-        OUTER_PATCH_SAVE ~mod_name~ ~%folder%~ BEGIN REPLACE_TEXTUALLY ~./~ ~~ END
-	    ACTION_IF DIRECTORY_EXISTS ~%dispatching_folder%~ BEGIN
-	        LAF ~lists#merge#folder~ STR_VAR folder = ~%dispatching_folder%~ END
-	    END
+    ACTION_TIME ~lists#merge~ BEGIN
+        PRINT ~Analyse des dossiers des mods...~ SILENT
+        ACTION_CLEAR_ARRAY ~folders~
+        GET_DIRECTORY_ARRAY ~folders~ ~.~ ~%regex_folders%~
+        ACTION_PHP_EACH ~folders~ AS _ => folder BEGIN
+            OUTER_TEXT_SPRINT ~dispatching_folder~ ~%folder%/dispatching~
+            OUTER_PATCH_SAVE ~mod_name~ ~%folder%~ BEGIN REPLACE_TEXTUALLY ~./~ ~~ END
+            ACTION_IF DIRECTORY_EXISTS ~%dispatching_folder%~ BEGIN
+                LAF ~lists#merge#folder~ STR_VAR folder = ~%dispatching_folder%~ END
+            END
+        END
 	END
 END
 
@@ -167,8 +169,9 @@ END
 
 DEFINE_ACTION_MACRO ~lists#load~
 BEGIN
+    ACTION_TIME ~lists#load~ BEGIN
     PRINT ~Chargement des listes...~ SILENT
-	ACTION_DEFINE_ARRAY ~groups~ BEGIN END
+    ACTION_DEFINE_ARRAY ~groups~ BEGIN END
 
     LAM ~lists#load#items~
     OUTER_SPRINT ~load_file_path~ ~%workspace%/groups~
@@ -182,6 +185,7 @@ BEGIN
     LAF ~tool#array#diff~ STR_VAR array = ~group_itm_all~ array2 = ~group_ignored~ RET $group_count(~group_itm_all~) = count RET_ARRAY group_itm_all = new_array END
     LAF ~tool#array#diff~ STR_VAR array = ~group_sto_all~ array2 = ~group_ignored~ RET $group_count(~group_sto_all~) = count RET_ARRAY group_sto_all = new_array END
     LAF ~tool#array#diff~ STR_VAR array = ~group_cnt_all~ array2 = ~group_ignored~ RET $group_count(~group_cnt_all~) = count RET_ARRAY group_cnt_all = new_array END
+    END
 END
 
 DEFINE_ACTION_MACRO ~lists#load#items~
