@@ -28,6 +28,7 @@ Cette option détermine combien d'objets différents seront choisis aléatoireme
 | 3 objets aléatoires | `3` |
 | Entre 2 et 5 objets aléatoires | `2-5` |
 | Tous les objets éligibles | `*` |
+| 1 objet différent par cible potentielle | `#` |
 
 ### Quantité de piles distribuées par cible
 
@@ -181,6 +182,7 @@ L'apparition est régie par un script vérifiant le chapitre en cours.
 | Présent à partir du chapitre 3 | `3+` |
 | Présent jusqu'au chapitre 3 inclus | `3-` |
 | Présent du chapitre 3 au chapitre 5 inclus | `3-5` |
+| Présent aux chapitres 2, 5 et 10 | `2\|5\|10` |
 
 ### Moment de la journée  
 
@@ -195,7 +197,7 @@ Cette option permet de définir à quel moment de la journée un objet peut appa
 
 | Exemple | Code |
 | ------- | ---- |
-| Présent à n'importe quel moment de la journée. | `*` |
+| Présent à n'importe quel moment de la journée. | `-` |
 | Présent uniquement pendant la journée. | `0` |
 | Présent uniquement au crépuscule. | `1` |
 | Présent uniquement pendant la nuit. | `2` |
@@ -224,6 +226,7 @@ Vous pouvez choisir de distribuer un objet selon le niveau de difficulté du jeu
 | En difficile ou plus | `4+` |
 | En normal ou moins | `2-` |
 | Entre normal et difficile | `2-4` |
+| En normal ou difficile | `2\|4` |
 
 ### Équipement de l'objet
     
@@ -356,6 +359,16 @@ Les meta-groupes sont des ensembles dynamiques générés automatiquement à par
 | Objet | Petits boucliers | arm | `small_shield.arm` |
 | Objet | Boucliers moyens | arm | `medium_shield.arm` |
 | Objet | Grands boucliers | arm | `large_shield.arm` |
+| Objet | Parchemins de sort de l'école de l'Abjuration | scl | `abjuration.scl` |
+| Objet | Parchemins de sort de l'école de la Conjuration | scl | `conjuration.scl` |
+| Objet | Parchemins de sort de l'école de la Divination | scl | `divination.scl` |
+| Objet | Parchemins de sort de l'école de l'Enchantement | scl | `enchantment.scl` |
+| Objet | Parchemins de sort de l'école de l'Illusion | scl | `illusion.scl` |
+| Objet | Parchemins de sort de l'école de l'Évocation | scl | `evocation.scl` |
+| Objet | Parchemins de sort de l'école de la Nécromancie | scl | `necromancy.scl` |
+| Objet | Parchemins de sort de l'école de l'Altération | scl | `alteration.scl` |
+| Objet | Parchemins de sort de l'école généraliste | scl | `generalist.scl` |
+| Objet | Parchemins de sort par niveau de sort | scl | `4-6.scl` |
 | Objet | Objet qui s'équipe à l'emplacement du casque | slt | `helmet.slt` |
 | Objet | Objet qui s'équipe à l'emplacement de l'armure | slt | `armor.slt` |
 | Objet | Objet qui s'équipe à l'emplacement du bouclier | slt | `shield.slt` |
