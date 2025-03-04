@@ -207,6 +207,11 @@ BEGIN
     PRINT ~Distribution aux créatures...~ SILENT
 
     // Initialisation des chaînes servant à créer les blocks de script
+    COPY - ~%MOD_FOLDER%/baf/inv_condition.baf~ nowhere READ_ASCII 0 inv_condition (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/inv_condition_destroy.baf~ nowhere READ_ASCII 0 inv_condition_destroy (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/inv_condition_negative_response_destroy.baf~ nowhere READ_ASCII 0 inv_condition_negative_response_destroy (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/inv_condition_negative_response_random.baf~ nowhere READ_ASCII 0 inv_condition_negative_response_random (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/inv_condition_response.baf~ nowhere READ_ASCII 0 inv_condition_response (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/slot_condition.baf~ nowhere READ_ASCII 0 slot_condition (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/slot_condition_negative.baf~ nowhere READ_ASCII 0 slot_condition_negative (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/slot_condition_negative_response_base.baf~ nowhere READ_ASCII 0 slot_condition_negative_response_base (SOURCE_SIZE) BUT_ONLY
@@ -220,13 +225,17 @@ BEGIN
     ACTION_PHP_EACH ~dispatch_cre~ AS cre => value BEGIN
         OUTER_SET index_dispatchs = 0
         OUTER_SET index_responses = 0
+        OUTER_SPRINT script_code ~~
+
         ACTION_PHP_EACH ~dispatch_cre_%cre%~ AS slot => count_by_slot BEGIN
             ACTION_IF ~%slot%~ STRING_EQUAL ~inv~ BEGIN
-                LAF ~dispatch#apply#creature#add_to_inventory~ STR_VAR creature = ~%cre%~ RET index_responses index_dispatchs END
+                LAF ~dispatch#apply#creature#add_to_inventory~ STR_VAR creature = ~%cre%~ RET index_responses index_dispatchs script_code END
             END ELSE BEGIN
-                LAF ~dispatch#apply#creature#add_to_equipment~ STR_VAR creature = ~%cre%~ slot RET index_responses index_dispatchs END
+                LAF ~dispatch#apply#creature#add_to_equipment~ STR_VAR creature = ~%cre%~ slot RET index_responses index_dispatchs script_code END
             END
         END
+
+        LAF ~dispatch#script#init~ STR_VAR creature = ~%cre%.cre~ script_code END
     END
 
     PRINT ~Distribution aux magasins...~ SILENT
@@ -333,8 +342,8 @@ DEFINE_ACTION_FUNCTION ~dispatch#apply#creature#add_to_inventory~
     RET
         index_responses
         index_dispatchs
+        script_code
 BEGIN
-    OUTER_SET current = 1
     OUTER_SET count_by_slot = $~dispatch_cre_%creature%~(~inv~)
 
     // S'il reste moins de place dans l'inventaire que d'ojets à distribuer, suppression d'objets aléatoires
@@ -369,12 +378,12 @@ BEGIN
     END
 
     // Traitement des distributions non conditionnées en premier
-    ACTION_IF VARIABLE_IS_SET $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) AND $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) > 0 BEGIN
+    ACTION_IF VARIABLE_IS_SET $~dispatch_cre_%creature%_%slot%~(~-#-#-#~) AND $~dispatch_cre_%cre%_%slot%~(~-#-#-#~) > 0 BEGIN
         OUTER_SPRINT condition ~-#-#-#~
         LAM ~dispatch#apply#creature#add_to_inventory#simple~
     END
 
-    ACTION_PHP_EACH ~dispatch_cre_%cre%_%slot%~ AS condition => value BEGIN
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%~ AS condition => value BEGIN
         ACTION_IF NOT ~%condition%~ STRING_EQUAL ~-#-#-#~ BEGIN
             LAM ~dispatch#apply#creature#add_to_inventory#condition~
         END
@@ -383,6 +392,7 @@ END
 
 DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_inventory#simple~
 BEGIN
+    OUTER_SET current = 1
     OUTER_SET total = $~dispatch_cre_%creature%_inv~(~%condition%~)
     ACTION_PHP_EACH ~dispatch_cre_%creature%_inv_%condition%~ AS data => item_per_target BEGIN
         ACTION_IF item_per_target > 0 BEGIN
@@ -406,22 +416,25 @@ END
 DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_inventory#condition~
 BEGIN
     LAF ~dispatch#condition_to_trigger~ STR_VAR condition RET trigger negative_trigger END
+    LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_inv_%condition%~ RET count_responses = count END
 
-    ACTION_CLEAR_ARRAY ~response_blocks~
-    ACTION_CLEAR_ARRAY ~destroy_blocks~
-
+    OUTER_SET current = 1
     OUTER_SET total = $~dispatch_cre_%creature%_inv~(~%condition%~)
     OUTER_SET index_dispatchs += 1
+    OUTER_SET response_weight = 100 / count_responses
+    OUTER_SPRINT responses ~~
+    OUTER_SPRINT negative_responses ~~
+    OUTER_SPRINT blocks_destroy_random ~~
+    OUTER_SPRINT reset_responses_trigger ~~
 
-    ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
+    ACTION_PHP_EACH ~dispatch_cre_%creature%_inv_%condition%~ AS data => item_per_target BEGIN
         LAM ~dispatch#read_data#creature~
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
 
-        //TODO: Utiliser les variables des fichier .baf pour générer le code
-        //TODO: OUTER_SPRINT slot_random_response EVAL ~%slot_random_response%~
-        OUTER_SPRINT $response_blocks(~%index_responses%~) ~SetGlobal("IDD_%index_dispatchs%","LOCALS",1)%WNL%    GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)%WNL%    ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))%WNL%    Continue()~
-        OUTER_SPRINT $destroy_blocks(~%index_responses%~) ~SetGlobal("IDD_%index_dispatchs%","LOCALS",0)%WNL%    DestroyItem("%item%")%WNL%    Continue()~
+        OUTER_SPRINT responses EVAL ~%responses%%inv_condition_response%~
+        OUTER_SPRINT negative_responses EVAL ~%inv_condition_negative_response_destroy%~
+        OUTER_SPRINT blocks_destroy_random EVAL ~%blocks_destroy_random%%inv_condition_destroy%~
         OUTER_SET index_responses += 1
 
         OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
@@ -430,46 +443,16 @@ BEGIN
         END
     END
 
-    LAF ~tool#array#count~ STR_VAR array = ~response_blocks~ RET count_responses = count END
+    ACTION_IF count_responses > 1 BEGIN
+        OUTER_SPRINT negative_responses EVAL ~%inv_condition_negative_response_random%~
+    END
 
-    ACTION_IF count_responses > 0 BEGIN
-        LAF ~dispatch#script#init~ INT_VAR script_index = $group_cre_all(~%creature%.cre~) STR_VAR script = $bcs_creature(~%creature%.cre~) RET script_name END
+    OUTER_SPRINT block_dispatch_condition EVAL ~%inv_condition%~
+    OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
+    OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
 
-        OUTER_SPRINT responses ~~
-        OUTER_SPRINT negative_block ~~
-        OUTER_SPRINT destroy_blocks ~~
-        OUTER_SET response_weight = 100 / count_responses
-
-        ACTION_IF count_responses == 1 BEGIN
-            ACTION_PHP_EACH ~response_blocks~ AS response_index => response BEGIN
-                OUTER_SPRINT responses ~%responses%  RESPONSE #%response_weight%%WNL%    %response%%WNL%~
-            END
-            ACTION_PHP_EACH ~destroy_blocks~ AS response_index => block BEGIN
-                OUTER_SPRINT negative_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",1)%WNL%  %negative_trigger%%WNL%THEN%WNL%  RESPONSE #100%WNL%    %block%%WNL%END%WNL%~
-            END
-        END
-        ELSE BEGIN
-            OUTER_SPRINT negative_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",1)%WNL%  %negative_trigger%%WNL%THEN%WNL%  RESPONSE #100%WNL%    SetGlobal("IDD_%index_dispatchs%","LOCALS",2)%WNL%    Continue()%WNL%END~
-
-            ACTION_PHP_EACH ~response_blocks~ AS response_index => response BEGIN
-                OUTER_SPRINT responses ~%responses%  RESPONSE #%response_weight%%WNL%    SetGlobal("IDR_%response_index%","LOCALS",1)%WNL%    %response%%WNL%~
-            END
-            ACTION_PHP_EACH ~destroy_blocks~ AS response_index => block BEGIN
-                OUTER_SPRINT destroy_blocks ~%destroy_blocks%IF%WNL%  Global("IDR_%response_index%","LOCALS",1)%WNL%  Global("IDD_%index_dispatchs%","LOCALS",2)%WNL%THEN%WNL%  RESPONSE #100%WNL%    SetGlobal("IDR_%response_index%","LOCALS",0)%WNL%    %block%%WNL%END%WNL%~
-            END
-        END
-
-        OUTER_SPRINT positive_block ~IF%WNL%  Global("IDD_%index_dispatchs%","LOCALS",0)%WNL%  %trigger%%WNL%THEN%WNL%%responses%%WNL%END%WNL%~
-        OUTER_SPRINT script_code ~%positive_block%%WNL%%WNL%%negative_block%%WNL%%WNL%%destroy_blocks%~
-        PRINT "MULTIPLE %condition%:%WNL%%WNL%%script_code%"
-
-        /*
-
-<<<<<<<< .../inlined/script.baf
-%script_code%
->>>>>>>>
-            TODO: EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~
-            */
+    ACTION_IF count_responses > 1 BEGIN
+        OUTER_SPRINT script_code ~%script_code%%WNL%%blocks_destroy_random%%WNL%~
     END
 END
 
@@ -481,8 +464,8 @@ DEFINE_ACTION_FUNCTION ~dispatch#apply#creature#add_to_equipment~
     RET
         index_responses
         index_dispatchs
+        script_code
 BEGIN
-    OUTER_SET current = 1
     OUTER_SET has_random_items = 0
     OUTER_SPRINT blocks_redispatch_random ~~
     OUTER_SPRINT slot_name $script_item_slots(~%slot%~)
@@ -516,6 +499,7 @@ END
 
 DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#simple~
 BEGIN
+    OUTER_SET current = 1
     OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
     ACTION_PHP_EACH ~dispatch_cre_%creature%_%slot%_%condition%~ AS data => item_per_target BEGIN
         ACTION_IF item_per_target > 0 BEGIN
@@ -541,9 +525,9 @@ END
 
 DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#multiple~
 BEGIN
-    LAF ~log#add#debug~ STR_VAR message = ~Dispatch : PLUSIEURS equipements dans le slot %slot% de %creature%~ END
     LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_%slot%_%condition%~ RET count_responses = count END
 
+    OUTER_SET current = 1
     OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
     OUTER_SET response_weight = 100 / count_responses
     OUTER_SET has_random_items = 1
@@ -569,19 +553,15 @@ BEGIN
 
     OUTER_SPRINT block_dispatch_random EVAL ~%slot_random%~
 
-    PRINT ~%block_dispatch_random%~
+    OUTER_SPRINT script_code ~%script_code%%block_dispatch_random%%WNL%~
 END
 
 DEFINE_ACTION_MACRO ~dispatch#apply#creature#add_to_equipment#condition~
 BEGIN
-    LAF ~log#add#debug~ STR_VAR message = ~Dispatch : CONDITIONNEL equipements dans le slot %slot% de %creature%~ END
     LAF ~dispatch#condition_to_trigger~ STR_VAR condition RET trigger negative_trigger END
     LAF ~tool#array#count~ STR_VAR array = ~dispatch_cre_%creature%_%slot%_%condition%~ RET count_responses = count END
 
-    ACTION_CLEAR_ARRAY ~response_blocks~
-    ACTION_CLEAR_ARRAY ~destroy_blocks~
-    ACTION_CLEAR_ARRAY ~redispatch_blocks~
-
+    OUTER_SET current = 1
     OUTER_SET total = $~dispatch_cre_%creature%_%slot%~(~%condition%~)
     OUTER_SET index_dispatchs += 1
     OUTER_SET index_reset_responses_trigger = index_responses
@@ -625,15 +605,11 @@ BEGIN
     OUTER_SPRINT block_dispatch_condition EVAL ~%slot_condition%~
     OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
 
-    PRINT ~%block_dispatch_condition%~
-    PRINT ~%block_negative_condition%~
-    ACTION_IF has_random_items == 1 BEGIN
-        PRINT ~%blocks_redispatch_random%~
-    END
-    FAIL ~TEST~
+    OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
 
-    OUTER_SPRINT script_code ~%positive_block%%WNL%%WNL%%negative_block%%WNL%%WNL%%destroy_blocks%%WNL%%WNL%%redispatch_blocks%~
-    PRINT "(%count_responses%) %condition%:%WNL%%WNL%%script_code%"
+    ACTION_IF has_random_items == 1 BEGIN
+        OUTER_SPRINT script_code ~%script_code%%blocks_redispatch_random%%WNL%~
+    END
 END
 
 DEFINE_ACTION_FUNCTION ~dispatch#condition_to_trigger~
@@ -1057,26 +1033,20 @@ BEGIN
 END
 
 
-
-// Ajouter en condition
-// - la réputation de Player1
-// - l'or du groupe
-// - niveau d'expérience de Player1
-// - Niveau moyen du groupe : LevelParty()
-// - Mode cauchemard activé : NightmareModeOn()
-// Directement écrire la condition en WEIDU dans le .2da ?? Pratique mais risqué, plus devoir faire la condition inverse...
-
-
 DEFINE_ACTION_FUNCTION ~dispatch#script#init~
-    INT_VAR
-        script_index = 0
     STR_VAR
-        script = ~~
-    RET script_name
+        creature = ~~
+        script_code = ~~
 BEGIN
+    OUTER_SET script_index = $group_cre_all(~%creature%~)
+
     LAF ~tool#string#pad_left~ INT_VAR min_length = 6 STR_VAR string = ~%script_index%~ RET script_index = string END
+
+    OUTER_SPRINT script $bcs_creature(~%creature%~)
     OUTER_SPRINT script_name ~id%script_index%~
 
+    PRINT "CODE GENERE pour %cre%%WNL%%WNL%%script_code% !!"
+/*
     // On s'assure de copier l'éventuel script d'origine car plusieurs créatures peuvent se partager le même script.
     // Et on veut éviter que l'objet soit distribué à toutes ces créatures
     ACTION_IF NOT FILE_EXISTS ~%script_name%.bcs~ BEGIN
@@ -1087,6 +1057,15 @@ BEGIN
             COPY ~.../inlined/blank~ ~%script_name%.bcs~
         END
     END
+    */
+/*
+
+<<<<<<<< .../inlined/script.baf
+%script_code%
+>>>>>>>>
+EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~
+
+    */
 END
 
 
