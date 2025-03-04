@@ -71,12 +71,17 @@ END
 DEFINE_ACTION_FUNCTION log#debug
 BEGIN
     // Les groupes chargés
-	ACTION_PHP_EACH ~groups~ AS group_name => count BEGIN
-	    LAF ~log#add#debug~ STR_VAR message = ~Groupe : %group_name% : %count%~ END
+	ACTION_PHP_EACH ~group_count~ AS group_name => count BEGIN
+	    ACTION_IF ~%group_name%~ STRING_CONTAINS_REGEXP ~^group_2da_~ == 0 BEGIN
+	        OUTER_PATCH_SAVE ~group_name~ ~%group_name%~ BEGIN REPLACE_TEXTUALLY ~^group_2da_~ ~~ END
+	        LAF ~log#add#debug~ STR_VAR message = ~Groupe : %group_name% : %count%~ END
+	    END
 	END
 
 	// Les listes de données
 	ACTION_PHP_EACH ~group_count~ AS group_name => count BEGIN
-	    LAF ~log#add#debug~ STR_VAR message = ~Liste : %group_name% : %count%~ END
+	    ACTION_IF ~%group_name%~ STRING_CONTAINS_REGEXP ~^group_2da_~ != 0 BEGIN
+	        LAF ~log#add#debug~ STR_VAR message = ~Liste : %group_name% : %count%~ END
+	    END
 	END
 END
