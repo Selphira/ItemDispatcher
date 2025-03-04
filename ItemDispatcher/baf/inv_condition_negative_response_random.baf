@@ -1,0 +1,3 @@
+  RESPONSE #100
+    SetGlobal("IDD#%index_dispatchs%","LOCALS",2)
+    Continue()

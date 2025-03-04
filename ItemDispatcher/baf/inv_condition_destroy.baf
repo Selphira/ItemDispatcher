@@ -1,0 +1,10 @@
+IF
+  Global("IDD#%index_dispatchs%","LOCALS",2)
+  Global("IDR#%index_responses%","LOCALS",1)
+THEN
+  RESPONSE #100
+    SetGlobal("IDR#%index_responses%","LOCALS",0)
+    SetGlobal("IDD#%index_dispatchs%","LOCALS",0)
+    DestroyItem("%item%")
+    Continue()
+END

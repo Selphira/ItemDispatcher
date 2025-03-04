@@ -1,0 +1,7 @@
+  RESPONSE #%response_weight%
+    SetGlobal("IDR#%index_responses%","LOCALS",1)
+    SetGlobal("IDD#%index_dispatchs%","LOCALS",1)
+    GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)
+    ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))
+    DisplayString(Myself,'Objet aleatoire condition dans inventaire : %item%')
+    Continue()
