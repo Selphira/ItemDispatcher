@@ -1,9 +1,10 @@
 IF
-  Global("ID#%slot%","LOCALS",2)
+  Global("ID#%slot%","LOCALS",%slot_value_dispatched%)
   Global("IDR#%index_responses%","LOCALS",1)
 THEN
   RESPONSE #100
-    SetGlobal("ID#%slot%","LOCALS",1)
+    DisplayString(Myself,'Ajout objet conditionne du slot %slot% : %item%')
+    SetGlobal("ID#%slot%","LOCALS",%slot_value_to_dispatch%)
     ApplySpellRES("IDDES%slot_id%",Myself)
     GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)
     ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))

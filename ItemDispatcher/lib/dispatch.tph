@@ -209,6 +209,7 @@ BEGIN
     // Initialisation des chaînes servant à créer les blocks de script
     COPY - ~%MOD_FOLDER%/baf/inv_condition.baf~ nowhere READ_ASCII 0 inv_condition (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/inv_condition_destroy.baf~ nowhere READ_ASCII 0 inv_condition_destroy (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/inv_condition_negative.baf~ nowhere READ_ASCII 0 inv_condition_negative (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/inv_condition_negative_response_destroy.baf~ nowhere READ_ASCII 0 inv_condition_negative_response_destroy (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/inv_condition_negative_response_random.baf~ nowhere READ_ASCII 0 inv_condition_negative_response_random (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/inv_condition_response.baf~ nowhere READ_ASCII 0 inv_condition_response (SOURCE_SIZE) BUT_ONLY
@@ -448,7 +449,7 @@ BEGIN
     END
 
     OUTER_SPRINT block_dispatch_condition EVAL ~%inv_condition%~
-    OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
+    OUTER_SPRINT block_negative_condition EVAL ~%inv_condition_negative%~
     OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
 
     ACTION_IF count_responses > 1 BEGIN
@@ -467,9 +468,12 @@ DEFINE_ACTION_FUNCTION ~dispatch#apply#creature#add_to_equipment~
         script_code
 BEGIN
     OUTER_SET has_random_items = 0
+    OUTER_SET has_condition_items = 0
     OUTER_SPRINT blocks_redispatch_random ~~
     OUTER_SPRINT slot_name $script_item_slots(~%slot%~)
     OUTER_SET slot_id = IDS_OF_SYMBOL (~slots~ ~%slot_name%~)
+    OUTER_SET slot_value_to_dispatch = 0
+    OUTER_SET slot_value_dispatched = 1
 
     // Traitement des distributions non conditionnées en premier
     // Permettra aux distributions conditionnées de récupérer l'éventuel objet actuel de la cible
@@ -484,6 +488,8 @@ BEGIN
             LAM ~dispatch#apply#creature#add_to_equipment#simple~
         END
         ELSE BEGIN
+            OUTER_SET slot_value_to_dispatch += 1
+            OUTER_SET slot_value_dispatched += 1
             LAM ~dispatch#apply#creature#add_to_equipment#multiple~
         END
     END
@@ -492,8 +498,13 @@ BEGIN
         // TODO: Regrouper les élements avec volable+dropable+chapitre+difficulté
         // TODO: DisplayString(I:STRREF*) // Pour debugger
         ACTION_IF NOT ~%condition%~ STRING_EQUAL ~-#-#-#~ BEGIN
+            OUTER_SET has_condition_items = 1
             LAM ~dispatch#apply#creature#add_to_equipment#condition~
         END
+    END
+
+    ACTION_IF has_random_items == 1 AND has_condition_items == 1 BEGIN
+        OUTER_SPRINT script_code ~%script_code%%blocks_redispatch_random%%WNL%~
     END
 END
 
@@ -546,7 +557,7 @@ BEGIN
         OUTER_SET index_responses += 1
 
         OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
-            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Equipement aléatoire de %stack_size% %item% dans le slot %slot% de %creature%~ END
+            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Un équipement aléatoire de %stack_size% %item% dans le slot %slot% de %creature%~ END
             OUTER_SET current += 1
         END
     END
@@ -606,10 +617,6 @@ BEGIN
     OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
 
     OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
-
-    ACTION_IF has_random_items == 1 BEGIN
-        OUTER_SPRINT script_code ~%script_code%%blocks_redispatch_random%%WNL%~
-    END
 END
 
 DEFINE_ACTION_FUNCTION ~dispatch#condition_to_trigger~
@@ -1064,6 +1071,7 @@ BEGIN
 %script_code%
 >>>>>>>>
 EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~
++ Changer le script override de la créature
 
     */
 END

@@ -1,4 +1,5 @@
   RESPONSE #100
+    DisplayString(Myself,'Destruction objet inventaire : %item%')
     SetGlobal("IDR#%index_responses%","LOCALS",0)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",0)
     DestroyItem("%item%")

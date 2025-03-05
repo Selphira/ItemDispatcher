@@ -1,10 +1,10 @@
   RESPONSE #%response_weight%
-    SetGlobal("ID#%slot%","LOCALS",2)
+    DisplayString(Myself,'Ajout objet aleatoire conditionne du slot %slot% : %item%')
+    SetGlobal("ID#%slot%","LOCALS",%slot_value_dispatched%)
     SetGlobal("IDR#%index_responses%","LOCALS",1)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",1)
     ApplySpellRES("IDDES%slot_id%",Myself)
     GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)
     ActionOverride(Myself,SetItemFlags("%item%",%flags%,TRUE))
     XEquipItem("%item%",MySelf,%slot_name%,EQUIP)
-    DisplayString(Myself,'Objet aleatoire condition du slot %slot% : %item%')
     Continue()

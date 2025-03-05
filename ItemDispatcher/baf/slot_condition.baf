@@ -1,5 +1,5 @@
 IF
-  Global("ID#%slot%","LOCALS",1)
+  Global("ID#%slot%","LOCALS",%slot_value_to_dispatch%)
   Global("IDD#%index_dispatchs%","LOCALS",0)
   %trigger%
 THEN
