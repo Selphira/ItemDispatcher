@@ -494,6 +494,7 @@ BEGIN
                         END
                         PHP_EACH ~cre_dialog_%dialog%~ AS creature => _ BEGIN
                             SET $~sto_creature_%creature%~(~%store%.sto~) = 1
+                            SET $~cre_store_%store%~(~%creature%~) = 1
                         END
                     END
                 END

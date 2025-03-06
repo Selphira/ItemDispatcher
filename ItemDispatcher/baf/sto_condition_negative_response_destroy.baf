@@ -1,0 +1,6 @@
+  RESPONSE #100
+    DisplayString(Myself,'Destruction objet magasin : %item%')
+    SetGlobal("IDSR#%index_responses%","LOCALS",0)
+    SetGlobal("IDSD#%index_dispatchs%","GLOBAL",0)
+    RemoveStoreItem("%store%","%item%",%item_per_target%)
+    Continue()

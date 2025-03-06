@@ -67,10 +67,6 @@ BEGIN
                         LPF ~tool#quantity~ STR_VAR value = ~%row_item_quantity%~ RET item_quantity_is_percent = is_percent item_quantity = quantity END
                     END
 
-                    PATCH_IF equipable == 1 BEGIN
-                        SET item_per_target = 1
-                    END
-
                     LPF ~selector#item#get~ INT_VAR count = item_quantity count_is_percent = item_quantity_is_percent STR_VAR target = ~%row_item%~ RET count_items RET_ARRAY items END
 
                     PATCH_PHP_EACH ~items~ AS _ => item BEGIN
@@ -85,6 +81,7 @@ BEGIN
 
                         // On détermine dans quel slot l'objet devra être ajouté
                         PATCH_IF equipable == 1 BEGIN
+                            SET item_per_target = 1
                             LPF ~data#load#cre_item_slot~ INT_VAR category RET cre_item_slot END
                         END
 
@@ -100,7 +97,7 @@ BEGIN
                             //       bien précis et non pas sur les tableaux contenant l'ensemble des cibles (group_cre_all)
                             //       Le tableau en question serait le tableau targets d'une précédente itération
                             //       Problème, comment savoir si c'est cre, sto ou cnt
-                            //       => Avoir une fonction qui sait déterminer le type que "%row_target" vise (cre, stro ou cnt)
+                            //       => Avoir une fonction qui sait déterminer le type que "%row_target" vise (cre, sto ou cnt)
                             //       On pourrait ainsi optimiser tous les appels à  ~selector#target#get~ car on ne travaillera que sur un tableau au lieu de 3 !
                             LPF ~selector#target#get~ INT_VAR count = target_quantity_per_item count_is_percent = target_quantity_is_percent item_is_equipable = equipable item_count = item_per_target STR_VAR target = ~%row_target%~ item RET count_targets RET_ARRAY targets END
 
@@ -181,13 +178,13 @@ BEGIN
                                         PATCH_IF NOT VARIABLE_IS_SET $~dispatch_sto_%target%~(~%condition%~) BEGIN
                                             SET $~dispatch_sto_%target%~(~%condition%~) = 0
                                         END
-                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) BEGIN
-                                            SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) = 0
+                                        PATCH_IF NOT VARIABLE_IS_SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~) BEGIN
+                                            SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~) = 0
                                         END
 
                                         SET $dispatch_sto(~%target%~) += 1
                                         SET $~dispatch_sto_%target%~(~%condition%~) += 1
-                                        SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~) += item_per_target
+                                        SET $~dispatch_sto_%target%_%condition%~(~%item%~ ~%stack_size%~ ~%stealable%~ ~%droppable%~ ~%row_source%~ ~%row_chapter%~ ~%row_time_of_day%~ ~%row_difficulty%~ ~%area%~) += item_per_target
                                     END
                                     DEFAULT LPF ~log#add#error~ STR_VAR message = ~Not supported target type (%target_type%)~ END
                                 END
@@ -204,8 +201,6 @@ END
 
 DEFINE_ACTION_MACRO ~dispatch#apply~
 BEGIN
-    PRINT ~Distribution aux créatures...~ SILENT
-
     // Initialisation des chaînes servant à créer les blocks de script
     COPY - ~%MOD_FOLDER%/baf/inv_condition.baf~ nowhere READ_ASCII 0 inv_condition (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/inv_condition_destroy.baf~ nowhere READ_ASCII 0 inv_condition_destroy (SOURCE_SIZE) BUT_ONLY
@@ -222,6 +217,14 @@ BEGIN
     COPY - ~%MOD_FOLDER%/baf/slot_condition_response.baf~ nowhere READ_ASCII 0 slot_condition_response (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/slot_random.baf~ nowhere READ_ASCII 0 slot_random (SOURCE_SIZE) BUT_ONLY
     COPY - ~%MOD_FOLDER%/baf/slot_random_response.baf~ nowhere READ_ASCII 0 slot_random_response (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition.baf~ nowhere READ_ASCII 0 sto_condition (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition_destroy.baf~ nowhere READ_ASCII 0 sto_condition_destroy (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition_negative.baf~ nowhere READ_ASCII 0 sto_condition_negative (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition_negative_response_destroy.baf~ nowhere READ_ASCII 0 sto_condition_negative_response_destroy (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition_negative_response_random.baf~ nowhere READ_ASCII 0 sto_condition_negative_response_random (SOURCE_SIZE) BUT_ONLY
+    COPY - ~%MOD_FOLDER%/baf/sto_condition_response.baf~ nowhere READ_ASCII 0 sto_condition_response (SOURCE_SIZE) BUT_ONLY
+
+    PRINT ~Distribution aux créatures...~ SILENT
 
     ACTION_PHP_EACH ~dispatch_cre~ AS cre => value BEGIN
         OUTER_SET index_dispatchs = 0
@@ -242,24 +245,27 @@ BEGIN
     PRINT ~Distribution aux magasins...~ SILENT
 
     ACTION_PHP_EACH ~dispatch_sto~ AS sto => value BEGIN
+        OUTER_SET index_dispatchs = 0
+        OUTER_SET index_responses = 0
+        OUTER_SPRINT script_code ~~
+
         PRINT "Objets à distribuer au magasin %sto% : %value%"
         ACTION_PHP_EACH ~dispatch_sto_%sto%~ AS condition => value BEGIN
             PRINT ">> Avec comme condition %condition% : %value%"
-            ACTION_PHP_EACH ~dispatch_sto_%sto%_%condition%~ AS data => item_per_target BEGIN
-                OUTER_SPRINT item ~%data_0%~
-                OUTER_SPRINT stack_size ~%data_1%~
-                OUTER_SPRINT stealable ~%data_2%~
-                OUTER_SPRINT droppable ~%data_3%~
-                OUTER_SPRINT source ~%data_4%~
-                OUTER_SPRINT chapter ~%data_5%~
-                OUTER_SPRINT time_of_day ~%data_6%~
-                OUTER_SPRINT difficulty ~%data_7%~
-                OUTER_SPRINT target ~%sto%~
 
-                PRINT "   Distribution de %item_per_target% pile(s) de %stack_size% de %item% vers %target%.sto (S: %stealable% - D: %droppable%)"
-
-                LAF ~log#add#debug~ STR_VAR message = ~Dispatch : Ajout de %item_per_target% pile(s) de %stack_size% de %item% dans le magasin %target%~ END
+            ACTION_IF ~%condition%~ STRING_EQUAL ~-#-#-#~ BEGIN
+                LAM ~dispatch#apply#store#simple~
             END
+            ELSE BEGIN
+                LAM ~dispatch#apply#store#condition~
+            END
+        END
+
+        // On applique le script à chaque créature utilisant le store.
+        // Cependant, contrairement aux créatures, la variable pour déterminer si l'objet a été distribué est GLOBAL.
+        // Ceci afin que si plusieurs créatures ont le script, une seule activation est possible.
+        ACTION_PHP_EACH ~cre_store_%sto%~ AS creature => _ BEGIN
+            LAF ~dispatch#script#init~ STR_VAR creature script_code END
         END
     END
 
@@ -316,6 +322,21 @@ BEGIN
     OUTER_SPRINT difficulty ~%data_7%~
     OUTER_SPRINT area ~%data_8%~
     OUTER_SPRINT two_handed ~%data_9%~
+
+    OUTER_PATCH_SAVE ~item~ ~%item%~ BEGIN REPLACE_TEXTUALLY ~\.itm~ ~~ END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#read_data#store~
+BEGIN
+    OUTER_SPRINT item ~%data_0%~
+    OUTER_SPRINT stack_size ~%data_1%~
+    OUTER_SPRINT stealable ~%data_2%~
+    OUTER_SPRINT droppable ~%data_3%~
+    OUTER_SPRINT source ~%data_4%~
+    OUTER_SPRINT chapter ~%data_5%~
+    OUTER_SPRINT time_of_day ~%data_6%~
+    OUTER_SPRINT difficulty ~%data_7%~
+    OUTER_SPRINT area ~%data_8%~
 
     OUTER_PATCH_SAVE ~item~ ~%item%~ BEGIN REPLACE_TEXTUALLY ~\.itm~ ~~ END
 END
@@ -617,6 +638,79 @@ BEGIN
     OUTER_SPRINT block_negative_condition EVAL ~%slot_condition_negative%~
 
     OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#store#simple~
+BEGIN
+    OUTER_SET current = 1
+    OUTER_SET total = $~dispatch_sto_%sto%~(~%condition%~)
+    ACTION_PHP_EACH ~dispatch_sto_%sto%_%condition%~ AS data => item_per_target BEGIN
+        ACTION_IF item_per_target > 0 BEGIN
+            LAM ~dispatch#read_data#store~
+            COPY_EXISTING ~%sto%.sto~ ~override~
+                SET count_charge1 = stack_size
+                SET count_charge3 = 0
+                LPF ~tool#item#get_charges~ STR_VAR item RET count_charge2 = charge END
+                LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
+
+                FOR (number = 1; number <= item_per_target; ++number) BEGIN
+                    //ADD_STORE_ITEM ~%item%~ LAST (count_charge1) (count_charge2) (count_charge3) ~%flags%~ (item_per_target)
+                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire du magasin %sto%~ END
+                    SET current += 1
+                END
+            BUT_ONLY
+        END
+    END
+END
+
+DEFINE_ACTION_MACRO ~dispatch#apply#store#condition~
+BEGIN
+    LAF ~dispatch#condition_to_trigger~ STR_VAR condition RET trigger negative_trigger END
+    LAF ~tool#array#count~ STR_VAR array = ~dispatch_sto_%sto%_%condition%~ RET count_responses = count END
+
+    OUTER_SET current = 1
+    OUTER_SET total = $~dispatch_sto_%sto%~(~%condition%~)
+    OUTER_SET index_dispatchs += 1
+    OUTER_SET index_reset_responses_trigger = index_responses
+    OUTER_SET response_weight = 100 / count_responses
+    OUTER_SPRINT store ~%sto%~
+    OUTER_SPRINT responses ~~
+    OUTER_SPRINT negative_responses ~~
+    OUTER_SPRINT blocks_destroy_random ~~
+    OUTER_SPRINT reset_responses_trigger ~~
+
+    ACTION_PHP_EACH ~dispatch_sto_%sto%_%condition%~ AS data => item_per_target BEGIN
+        OUTER_SPRINT reset_responses_trigger ~%reset_responses_trigger%%WNL%    SetGlobal("IDSR#%index_reset_responses_trigger%","LOCALS",0)~
+        OUTER_SET index_reset_responses_trigger += 1
+    END
+
+    ACTION_PHP_EACH ~dispatch_sto_%sto%_%condition%~ AS data => item_per_target BEGIN
+        LAM ~dispatch#read_data#store~
+        LAF ~tool#item#get_charges~ STR_VAR item RET charge END
+        LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SPRINT responses EVAL ~%responses%%sto_condition_response%~
+        OUTER_SPRINT negative_responses EVAL ~%sto_condition_negative_response_destroy%~
+        OUTER_SPRINT blocks_destroy_random EVAL ~%blocks_destroy_random%%sto_condition_destroy%~
+        OUTER_SET index_responses += 1
+
+        OUTER_FOR (number = 1; number <= item_per_target; ++number) BEGIN
+            LAF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile conditionnée de %stack_size% %item% dans l'inventaire du magasin %sto% (%condition%)~ END
+            OUTER_SET current += 1
+        END
+    END
+
+    ACTION_IF count_responses > 1 BEGIN
+        OUTER_SPRINT negative_responses EVAL ~%sto_condition_negative_response_random%~
+    END
+
+    OUTER_SPRINT block_dispatch_condition EVAL ~%sto_condition%~
+    OUTER_SPRINT block_negative_condition EVAL ~%sto_condition_negative%~
+    OUTER_SPRINT script_code ~%script_code%%block_dispatch_condition%%WNL%%block_negative_condition%%WNL%~
+
+    ACTION_IF count_responses > 1 BEGIN
+        OUTER_SPRINT script_code ~%script_code%%WNL%%blocks_destroy_random%%WNL%~
+    END
 END
 
 DEFINE_ACTION_FUNCTION ~dispatch#condition_to_trigger~

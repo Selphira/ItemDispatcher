@@ -1,0 +1,6 @@
+  RESPONSE #%response_weight%
+    DisplayString(Myself,'Ajout objet aleatoire magasin : %item%')
+    SetGlobal("IDSR#%index_responses%","LOCALS",1)
+    SetGlobal("IDSD#%index_dispatchs%","GLOBAL",1)
+    AddStoreItem("%store%","%item%",%item_per_target%,%flags%)
+    Continue()

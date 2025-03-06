@@ -1,0 +1,6 @@
+IF
+  Global("IDSD#%index_dispatchs%","GLOBAL",1)
+  %negative_trigger%
+THEN
+%negative_responses%
+END

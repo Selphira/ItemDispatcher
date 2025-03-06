@@ -173,7 +173,7 @@ BEGIN
     CLEAR_ARRAY sto_targets
     CLEAR_ARRAY cnt_targets
 
-    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9_#]+\.cre$~ == 0 BEGIN
+    PATCH_IF ~%target%~ STRING_MATCHES_REGEXP ~^[a-z0-9_#]+\.\(cre\|sto\)$~ == 0 BEGIN
         PATCH_IF FILE_EXISTS_IN_GAME ~%target%~ BEGIN
             SPRINT $targets(1) ~%target%~
             SET count_targets = 1

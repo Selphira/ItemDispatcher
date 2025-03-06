@@ -1,0 +1,3 @@
+  RESPONSE #100
+    SetGlobal("IDSD#%index_dispatchs%","GLOBAL",2)
+    Continue()
