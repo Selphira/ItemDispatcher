@@ -396,12 +396,12 @@ Les meta-groupes sont des ensembles dynamiques générés automatiquement à par
 | Type | Meta-groupe | Extension | Exemple |
 | ---- | ----------- | --------- | ------- |
 | Créature | Niveau de la créature | lvl | `2.lvl` |
-| Créature | Force de la créature | lvl | `15.str` |
-| Créature | Dextérité de la créature | lvl | `14-.dex` |
-| Créature | Constitution de la créature | lvl | `17+.con` |
-| Créature | Intelligence de la créature | lvl | `14-16.int` |
-| Créature | Sagesse de la créature | lvl | `12.wis` |
-| Créature | Charisme de la créature | lvl | `12.cha` |
+| Créature | Force de la créature | str | `15.str` |
+| Créature | Dextérité de la créature | dex | `14-.dex` |
+| Créature | Constitution de la créature | con | `17+.con` |
+| Créature | Intelligence de la créature | int | `14-16.int` |
+| Créature | Sagesse de la créature | wis | `12.wis` |
+| Créature | Charisme de la créature | cha | `12.cha` |
 | Créature | Les créatures de la zone | are | `ar0602.are` |
 | Objet | Niveau d'echantement de l'objet | ilv | `4+.ilv` |
 | Objet | Objets maudits | igr | `cursed.igr` |
