@@ -469,6 +469,7 @@ BEGIN
     OUTER_SET slot_id = IDS_OF_SYMBOL (~slots~ ~%slot_name%~)
     OUTER_SET slot_value_to_dispatch = 0
     OUTER_SET slot_value_dispatched = 1
+    OUTER_SET slot_value_to_reset = 2
 
     // Traitement des distributions non conditionnées en premier
     // Permettra aux distributions conditionnées de récupérer l'éventuel objet actuel de la cible
@@ -485,6 +486,7 @@ BEGIN
         ELSE BEGIN
             OUTER_SET slot_value_to_dispatch += 1
             OUTER_SET slot_value_dispatched += 1
+            OUTER_SET slot_value_to_reset += 1
             LAM ~dispatch#apply#creature#add_to_equipment#multiple~
         END
     END

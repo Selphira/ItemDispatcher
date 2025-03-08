@@ -1,5 +1,5 @@
   RESPONSE #100
-    SetGlobal("ID#%slot%","LOCALS",%slot_value_dispatched%)
+    SetGlobal("ID#%slot%","LOCALS",%slot_value_to_reset%)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",0)
     %reset_responses_trigger%
     Continue()
