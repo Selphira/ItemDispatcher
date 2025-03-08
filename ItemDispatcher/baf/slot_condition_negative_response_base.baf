@@ -5,6 +5,6 @@
     %reset_responses_trigger%
     ApplySpellRES("IDDES%slot_id%",Myself)
     GiveItemCreate("%base_item%",Myself,%base_charges1%,%base_charges2%,%base_charges3%)
-    ActionOverride(Myself,SetItemFlags("%base_item%",%base_flags%,TRUE))
+    SetItemFlags("%base_item%",%base_flags%,TRUE)
     XEquipItem("%base_item%",MySelf,%slot_name%,EQUIP)
     Continue()
