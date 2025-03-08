@@ -361,7 +361,7 @@ BEGIN
         SET $group_itm_all(~%item%~) = 1
         SET $group_count(~group_itm_all~) += 1
 
-        PATCH_IF NOT ~%armor_type%~ STRING_EQUAL ~~ BEGIN
+        PATCH_IF NOT ~%armor_type%~ STRING_EQUAL ~~ AND (~%category_name%~ STRING_EQUAL ~armor~ OR ~%category_name%~ STRING_EQUAL ~shield~) BEGIN
             SET $~group_itm_armor_type_%armor_type%~(~%item%~) = 1
             SET $group_count(~group_itm_armor_type_%armor_type%~) += 1
         END
@@ -639,7 +639,7 @@ DEFINE_ACTION_FUNCTION ~data#load#ability_scores~
         group_count
 BEGIN
     ACTION_FOR_EACH ability_score IN ~strength~ ~intelligence~ ~wisdom~ ~dexterity~ ~constitution~ ~charisma~ BEGIN
-        OUTER_FOR (value = 1; value <= 25; ++value) BEGIN
+        OUTER_FOR (value = 1; value <= 30; ++value) BEGIN
             OUTER_SET $group_count(~group_cre_%ability_score%_%value%~) = 0
         END
     END
