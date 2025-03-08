@@ -8,6 +8,12 @@ BEGIN
     PRINT ~Distribution des objets...~ SILENT
     LAM ~dispatch#apply~
     END
+
+    // Création des sortilèges qui vont supprimer l'objet d'un slot précis.
+    OUTER_FOR (slot = 0; slot <= 38; ++slot) BEGIN
+        COPY ~%MOD_FOLDER%/spl/iddes0.spl~ ~override/iddes%slot%.spl~
+            LPF ALTER_SPELL_EFFECT INT_VAR check_headers = 1 match_opcode = 143 parameter1 = slot END
+    END
 END
 
 DEFINE_ACTION_MACRO ~dispatch#prepare~
@@ -667,7 +673,7 @@ BEGIN
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
 
-        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@11) // ~Ajout conditionné dans l'inventaire de la créature "%creature%" : %item%~
+        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@31) // ~Ajout conditionné dans le magasin "%store%" : %item%~
         OUTER_SET strref_destroy = RESOLVE_STR_REF(@32) // ~Suppression dans le magasin "%store%" : %item%~
 
         OUTER_SPRINT responses EVAL ~%responses%%sto_condition_response%~
