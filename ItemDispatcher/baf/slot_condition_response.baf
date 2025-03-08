@@ -1,5 +1,5 @@
   RESPONSE #%response_weight%
-    DisplayString(Myself,'Ajout objet aleatoire conditionne du slot %slot% : %item%')
+    DisplayString(Myself,%strref_add_conditional%)
     SetGlobal("ID#%slot%","LOCALS",%slot_value_dispatched%)
     SetGlobal("IDR#%index_responses%","LOCALS",1)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",1)

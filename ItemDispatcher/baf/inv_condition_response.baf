@@ -1,5 +1,5 @@
   RESPONSE #%response_weight%
-    DisplayString(Myself,'Ajout objet aleatoire inventaire : %item%')
+    DisplayString(Myself,%strref_add_conditional%)
     SetGlobal("IDR#%index_responses%","LOCALS",1)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",1)
     GiveItemCreate("%item%",Myself,%item_per_target%,%charge%,0)

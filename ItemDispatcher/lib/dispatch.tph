@@ -83,6 +83,9 @@ BEGIN
                         PATCH_IF equipable == 1 BEGIN
                             SET item_per_target = 1
                             LPF ~data#load#cre_item_slot~ INT_VAR category RET cre_item_slot END
+                            PATCH_IF STRING_LENGTH ~%cre_item_slot%~ == 0 BEGIN
+                                PATCH_FAIL ~Item cannot be equipped: Invalid equipment slot (%item% - %category%)~
+                            END
                         END
 
                         PATCH_IF ~%row_item_quantity%~ STRING_EQUAL ~#~ BEGIN
@@ -244,8 +247,9 @@ BEGIN
 
     PRINT ~Distribution aux magasins...~ SILENT
 
+    OUTER_SET index_dispatchs = 0
+
     ACTION_PHP_EACH ~dispatch_sto~ AS sto => value BEGIN
-        OUTER_SET index_dispatchs = 0
         OUTER_SET index_responses = 0
         OUTER_SPRINT script_code ~~
 
@@ -268,46 +272,6 @@ BEGIN
             LAF ~dispatch#script#init~ STR_VAR creature script_code END
         END
     END
-
-    /*
-    creature source  -> DELETE_CRE_ITEM
-    magasin source   -> DELETE_STORE_ITEM | REMOVE_STORE_ITEM_EX
-    conteneur source -> DELETE_AREA_ITEM ? Ne semble pas pouvoir viser un conteneur particulier
-    creature ->
-       chapitre   -> ADD_CRE_EFFECT avec opcode qui vérifie chapitre ?
-                     136 = ~si le chapitre en cours est supérieur ou égal au %value%~
-                     137 = ~si le chapitre en cours est inférieur à %value%~
-                     Global("Chapter","GLOBAL",3)
-                     GlobalGT("Chapter","GLOBAL",3)
-                     GlobalLT("Chapter","GLOBAL",3)
-       difficulté -> ADD_CRE_EFFECT avec opcode qui vérifie difficulté ?
-                     0x40D0 Difficulty(I:Amount*DIFFLEV)
-                     0x40D1 DifficultyGT(I:Amount*DIFFLEV)
-                     0x40D2 DifficultyLT(I:Amount*DIFFLEV)
-                     Créature invisible avec script, qui est détruite que si tout a été distribué
-                     Ex: Une créature doit donner au chapitre 1 et 2, elle ne sera détruite que si 1 et 2 sont donnés
-                         Une créature par zone avec un script qui tourne
-       simple     -> REPLACE_CRE_ITEM (slot d'équipement) ou ADD_CRE_ITEM (slot d'inventaire) (Voir aussi ADD_CRE_ITEM_FLAGS|SET_CRE_ITEM_FLAGS)
-    magasin  ->
-       chapitre   -> Via dialogue de la créature vendeuse ? Modifier les dialogues pour ouvrir magasin spécifique au chapitre... Dupliquer bloc d'ouverture le copier et ajouter condition de chapitre/difficulté aux 2 (ou +) blocs
-       difficulté -> Via dialogue de la créature vendeuse ?
-                     AddStoreItem et RemoveStoreItem
-       simple     -> ADD_STORE_ITEM | ADD_STORE_ITEM_EX | REMOVE_STORE_ITEM
-    conteneur
-       chapitre   -> Via script du conteneur ?
-       difficulté -> Via script du conteneur ?
-       simple     -> ADD_AREA_ITEM
-    area actors       -> script spécifique à assigner/modifier via la zone
-    area spawn points -> script spécifique à assigner aux créatures qui vérifie la zone où elle se trouve
-    area containers   -> ADD_AREA_ITEM / REPLACE_AREA_ITEM
-    */
-    // TODO: Avoir une option du mod (et non de règle) pour déterminer le nombre maximum d'objets ajoutés dans une seule cible
-    // Exemple, max 2 objets dans l'invetaire d'une créature, si le mod veut en distribuer 5, alors il va créer 2 trésors aléatoires contenant une partie des objets à distribuer et éviter de distribuer 2 fois le même objet !
-
-    // Déterminer la source : Une source valide et possédant l'objet à distribuer. (faire une recherche dans toutes les créatures, magasin, etc. et générer des tableaux pour chaque objet !)
-    // TODO: Pouvoir ignorer les objets de certaines sources pour éviter certains bugs !
-    //       Plusieurs créatures ont des objets spéciaux qu'il ne faut pas enlever et/ou remplacer
-
 END
 
 DEFINE_ACTION_MACRO ~dispatch#read_data#creature~
@@ -426,8 +390,9 @@ BEGIN
                 LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
 
                 FOR (number = 1; number <= item_per_target; ++number) BEGIN
-                    //TODO: ADD_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~inv~
-                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire de %creature%~ END
+                    PATCH_PRINT ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire de %creature% :: %item% - %count_charge1% - %count_charge2% - %count_charge3% - %flags%~ PATCH_SILENT
+                    ADD_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~inv~
+                    LPF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire de %creature% :: %item% - %count_charge1% - %count_charge2% - %count_charge3% - %flags%~ END
                     SET current += 1
                 END
             BUT_ONLY
@@ -453,6 +418,9 @@ BEGIN
         LAM ~dispatch#read_data#creature~
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@11) // ~Ajout conditionné dans l'inventaire de la créature "%creature%" : %item%~
+        OUTER_SET strref_destroy = RESOLVE_STR_REF(@12) // ~Suppression dans l'inventaire de la créature "%creature%" : %item%~
 
         OUTER_SPRINT responses EVAL ~%responses%%inv_condition_response%~
         OUTER_SPRINT negative_responses EVAL ~%inv_condition_negative_response_destroy%~
@@ -543,11 +511,13 @@ BEGIN
                 LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
 
                 PATCH_IF two_handed == 1 BEGIN
-                    //REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP TWOHANDED
+                    PATCH_PRINT ~Remplacement equipement 2 mains de %creature% : %item% - %count_charge1% - %count_charge2% - %count_charge3% - %flags% - %slot%~ PATCH_SILENT
+                    REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP TWOHANDED
                     LPF ~log#add#debug~ STR_VAR message = ~Dispatch : Equipement de %stack_size% %item% dans le slot %slot% de %creature%~ END
                 END
                 ELSE BEGIN
-                    //REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP
+                    PATCH_PRINT ~Remplacement equipement de %creature% : %item% - %count_charge1% - %count_charge2% - %count_charge3% - %flags% - %slot%~ PATCH_SILENT
+                    REPLACE_CRE_ITEM ~%item%~ (count_charge1) (count_charge2) (count_charge3) ~%flags%~ ~%slot%~ EQUIP
                     LPF ~log#add#debug~ STR_VAR message = ~Dispatch : Equipement de %stack_size% %item% dans le slot %slot% de %creature%~ END
                 END
             BUT_ONLY
@@ -570,6 +540,9 @@ BEGIN
         LAM ~dispatch#read_data#creature~
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SET strref_add_random = RESOLVE_STR_REF(@20) // ~Ajout aléatoire dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
+        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@21) // ~Ajout conditionné dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
 
         OUTER_SPRINT responses EVAL ~%responses%%slot_random_response%~
         OUTER_SPRINT block_redispatch_random EVAL ~%slot_condition_random%~
@@ -612,6 +585,8 @@ BEGIN
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
 
+        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@21) // ~Ajout conditionné dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
+
         OUTER_SPRINT responses EVAL ~%responses%%slot_condition_response%~
         OUTER_SET index_responses += 1
 
@@ -627,9 +602,11 @@ BEGIN
     ELSE BEGIN
         LAF ~dispatch#creature#get_item_in_slot~ STR_VAR creature slot RET base_item = item base_flags = flags base_charges1 = charges1 base_charges2 = charges2 base_charges3 = charges3 END
         ACTION_IF ~%base_item%~ STRING_EQUAL ~~ BEGIN
+            OUTER_SET strref_destroy = RESOLVE_STR_REF(@22) // ~Suppression dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
             OUTER_SPRINT negative_responses EVAL ~%negative_responses%%slot_condition_negative_response_empty%~
         END
         ELSE BEGIN
+            OUTER_SET strref_reset = RESOLVE_STR_REF(@23) // ~Reinitialisation de l'emplacement "%slot%" de la créature "%creature%" : %base_item%~
             OUTER_SPRINT negative_responses EVAL ~%negative_responses%%slot_condition_negative_response_base%~
         END
     END
@@ -654,7 +631,8 @@ BEGIN
                 LPF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 1 RET flags END
 
                 FOR (number = 1; number <= item_per_target; ++number) BEGIN
-                    //ADD_STORE_ITEM ~%item%~ LAST (count_charge1) (count_charge2) (count_charge3) ~%flags%~ (item_per_target)
+                    PATCH_PRINT ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire du magasin %sto%~ PATCH_SILENT
+                    ADD_STORE_ITEM ~%item%~ LAST (count_charge1) (count_charge2) (count_charge3) ~%flags%~ (item_per_target)
                     LPF ~log#add#debug~ STR_VAR message = ~Dispatch : %current%/%total% : Une pile de %stack_size% %item% dans l'inventaire du magasin %sto%~ END
                     SET current += 1
                 END
@@ -688,6 +666,9 @@ BEGIN
         LAM ~dispatch#read_data#store~
         LAF ~tool#item#get_charges~ STR_VAR item RET charge END
         LAF ~tool#item#flags~ INT_VAR identified = 1 droppable stealable weidu = 0 RET flags END
+
+        OUTER_SET strref_add_conditional = RESOLVE_STR_REF(@11) // ~Ajout conditionné dans l'inventaire de la créature "%creature%" : %item%~
+        OUTER_SET strref_destroy = RESOLVE_STR_REF(@32) // ~Suppression dans le magasin "%store%" : %item%~
 
         OUTER_SPRINT responses EVAL ~%responses%%sto_condition_response%~
         OUTER_SPRINT negative_responses EVAL ~%sto_condition_negative_response_destroy%~
@@ -1139,35 +1120,37 @@ DEFINE_ACTION_FUNCTION ~dispatch#script#init~
         creature = ~~
         script_code = ~~
 BEGIN
-    OUTER_SET script_index = $group_cre_all(~%creature%~)
-
-    LAF ~tool#string#pad_left~ INT_VAR min_length = 6 STR_VAR string = ~%script_index%~ RET script_index = string END
-
-    OUTER_SPRINT script $bcs_creature(~%creature%~)
-    OUTER_SPRINT script_name ~id%script_index%~
-
-    PRINT "CODE GENERE pour %cre%%WNL%%WNL%%script_code% !!"
-/*
-    // On s'assure de copier l'éventuel script d'origine car plusieurs créatures peuvent se partager le même script.
-    // Et on veut éviter que l'objet soit distribué à toutes ces créatures
-    ACTION_IF NOT FILE_EXISTS ~%script_name%.bcs~ BEGIN
-        ACTION_IF FILE_EXISTS ~%script%.bcs~ BEGIN
-            COPY_EXISTING ~%script%.bcs~ ~%script_name%.bcs~
-        END
-        ELSE BEGIN
-            COPY ~.../inlined/blank~ ~%script_name%.bcs~
-        END
-    END
-    */
-/*
-
+    ACTION_IF STRING_LENGTH ~%script_code%~ > 0 BEGIN
 <<<<<<<< .../inlined/script.baf
 %script_code%
 >>>>>>>>
-EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~
-+ Changer le script override de la créature
 
-    */
+        OUTER_SET script_index = $group_cre_all(~%creature%~)
+
+        LAF ~tool#string#pad_left~ INT_VAR min_length = 6 STR_VAR string = ~%script_index%~ RET script_index = string END
+
+        OUTER_SPRINT script $bcs_creature(~%creature%~)
+        OUTER_SPRINT script_name ~id%script_index%~
+
+        // On s'assure de copier l'éventuel script d'origine car plusieurs créatures peuvent se partager le même script.
+        // Et on veut éviter que l'objet soit distribué à toutes ces créatures
+        ACTION_IF NOT FILE_EXISTS ~override/%script_name%.bcs~ BEGIN
+            ACTION_IF FILE_EXISTS_IN_GAME ~%script%.bcs~ BEGIN
+                COPY_EXISTING ~%script%.bcs~ ~override/%script_name%.bcs~
+            END
+            ELSE BEGIN
+                COPY ~.../inlined/blank~ ~override/%script_name%.bcs~
+            END
+        END
+
+        EXTEND_TOP ~%script_name%.bcs~ ~.../inlined/script.baf~ EVALUATE_BUFFER
+
+        PRINT "Ecriture du script %script_name% dans %creature% (%script%)" SILENT
+
+        COPY_EXISTING ~%creature%~ ~override~
+            WRITE_ASCII 0x248 ~%script_name%~ #8
+        BUT_ONLY
+    END
 END
 
 

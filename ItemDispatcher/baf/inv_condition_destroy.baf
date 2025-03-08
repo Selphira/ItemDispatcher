@@ -3,7 +3,7 @@ IF
   Global("IDR#%index_responses%","LOCALS",1)
 THEN
   RESPONSE #100
-    DisplayString(Myself,'Destruction objet inventaire : %item%')
+    DisplayString(Myself,%strref_destroy%)
     SetGlobal("IDR#%index_responses%","LOCALS",0)
     SetGlobal("IDD#%index_dispatchs%","LOCALS",0)
     DestroyItem("%item%")

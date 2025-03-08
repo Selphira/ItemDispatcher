@@ -1,0 +1,14 @@
+@0 = ~Distribution des objets~
+
+@10 = ~Ajout aléatoire dans l'inventaire de la créature "%creature%" : %item%~
+@11 = ~Ajout conditionné dans l'inventaire de la créature "%creature%" : %item%~
+@12 = ~Suppression dans l'inventaire de la créature "%creature%" : %item%~
+
+@20 = ~Ajout aléatoire dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
+@21 = ~Ajout conditionné dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
+@22 = ~Suppression dans l'emplacement "%slot%" de la créature "%creature%" : %item%~
+@23 = ~Reinitialisation de l'emplacement "%slot%" de la créature "%creature%" : %base_item%~
+
+@30 = ~Ajout aléatoire dans le magasin "%store%" : %item%~
+@31 = ~Ajout conditionné dans le magasin "%store%" : %item%~
+@32 = ~Suppression dans le magasin "%store%" : %item%~
