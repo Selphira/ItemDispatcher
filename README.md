@@ -79,49 +79,7 @@ Il est possible d'utiliser un objet aléatoire distribué lors de l'installation
 - **Objet aléatoire** : Utilisez une combinaison de filtres (voir section [combinaisons](#combinaisons)).
 - **Trésor aléatoire** : Mentionnez le nom de la liste de trésors (ex. `sword.rnd`).
 
-### Quantité de cibles
-
-Par défaut, un seul objet est distribué par cible. Il est possible de spécifier le nombre de cibles sur lesquelles l'objet sera réparti, incluant des options comme : toutes les cibles, un nombre précis, un nombre aléatoire ou un pourcentage de cibles.
-
-Si le nombre de cibles disponibles est inférieur à celui souhaité, l'objet ne sera distribué que sur les cibles disponibles.  
-
-#### Exemples de quantités de cibles
-
-| Exemple | Code |
-| ------- | ---- |
-| 1 cible aléatoire |  `-` ou `1` |
-| Toutes les cibles | `*` |
-| 2 cibles aléatoires | `2` |
-| Entre 2 et 6 cibles aléatoires | `2-6` |
-| 20% des cibles potentielles | `20%` |
-
-### Cible de l'objet
-
-La cible désigne l'endroit où l'objet sera distribué. Elle peut être définie de plusieurs manières, selon le niveau de précision souhaité :
-
-1. **Par le nom du fichier** : La méthode la plus simple consiste à spécifier directement le fichier correspondant à la cible (par exemple, `skelet01.cre` pour une créature spécifique ou `ribald3.sto` pour un magasin particulier).
-2. **Par une sélection aléatoire ou complexe** : Si aucune cible précise n'est indiquée, des [groupes](groupes), des [meta-groupes](meta-groupes) ou des [combinaisons](#combinaisons) de critères peuvent être utilisés pour définir les cibles.
-
-Les types de cibles possibles incluent :
-
-- **Créature** : L'objet peut être ajouté à l'inventaire ou équipé sur une créature.
-- **Magasin** : Seuls les magasins acceptant le type d'objet seront pris en compte.
-- **Conteneur** : L'objet sera placé dans un conteneur spécifique ou aléatoire.
-
-**Conditions de sélection pour les créatures**
-
-Lorsqu'une créature est sélectionnée aléatoirement, les conditions suivantes s'appliquent :
-
-- **Si l'objet est destiné à être équipé**, seules les **créatures humanoïdes** avec un emplacement d'équipement libre sont éligibles. Un emplacement est considéré comme libre si aucun objet non droppable n'y est déjà équipé.
-- **Si l'objet est une arme ou un bouclier et doit être équipé**, seules les créatures possédant une compétence martiale suffisante pour manier l'objet seront retenues. Cela garantit que les créatures sélectionnées peuvent utiliser l'objet de manière optimale.
-- Seules les créatures qui possèdent au moins un emplacement d'inventaire libre sont éligibles à la sélection.
-
-Dans les cas où plusieurs mods ciblent la même créature ou que cette dernière est sélectionnée plusieurs fois pour un objet à équiper sur le même emplacement, une liste de trésors aléatoires sera automatiquement générée et assignée à la créature. L'objet final sera alors déterminé de manière aléatoire pendant la partie.
-
-Si aucune cible n'est spécifiée, elle sera choisie aléatoirement parmi l'ensemble des créatures disponibles.  
-Si aucune cible valide (créature, magasin ou conteneur) ne peut être trouvée, la règle de distribution sera ignorée.
-
-##### Différences entre la sélection d'un seul objet et de plusieurs objets  
+##### Différences entre la sélection d'un seul objet et de plusieurs objets aléatoires  
 
 Les règles de distribution peuvent être configurées pour sélectionner un seul objet ou plusieurs objets aléatoirement. Chaque approche a ses propres avantages, inconvénients et cas d’usage spécifiques.
 
@@ -174,6 +132,47 @@ Plusieurs objets sont sélectionnés aléatoirement parmi ceux définis par les 
 
 Choisissez le type de règle en fonction de vos besoins : une sélection unique pour la précision, ou plusieurs objets pour la variété et la richesse des contenus distribués.
 
+### Quantité de cibles
+
+Par défaut, un seul objet est distribué par cible. Il est possible de spécifier le nombre de cibles sur lesquelles l'objet sera réparti, incluant des options comme : toutes les cibles, un nombre précis, un nombre aléatoire ou un pourcentage de cibles.
+
+Si le nombre de cibles disponibles est inférieur à celui souhaité, l'objet ne sera distribué que sur les cibles disponibles.  
+
+#### Exemples de quantités de cibles
+
+| Exemple | Code |
+| ------- | ---- |
+| 1 cible aléatoire |  `-` ou `1` |
+| Toutes les cibles | `*` |
+| 2 cibles aléatoires | `2` |
+| Entre 2 et 6 cibles aléatoires | `2-6` |
+| 20% des cibles potentielles | `20%` |
+
+### Cible de l'objet
+
+La cible désigne l'endroit où l'objet sera distribué. Elle peut être définie de plusieurs manières, selon le niveau de précision souhaité :
+
+1. **Par le nom du fichier** : La méthode la plus simple consiste à spécifier directement le fichier correspondant à la cible (par exemple, `skelet01.cre` pour une créature spécifique ou `ribald3.sto` pour un magasin particulier).
+2. **Par une sélection aléatoire ou complexe** : Si aucune cible précise n'est indiquée, des [groupes](groupes), des [meta-groupes](meta-groupes) ou des [combinaisons](#combinaisons) de critères peuvent être utilisés pour définir les cibles.
+
+Les types de cibles possibles incluent :
+
+- **Créature** : L'objet peut être ajouté à l'inventaire ou équipé sur une créature.
+- **Magasin** : Seuls les magasins acceptant le type d'objet seront pris en compte.
+- **Conteneur** : L'objet sera placé dans un conteneur spécifique ou aléatoire.
+
+**Conditions de sélection pour les créatures**
+
+Lorsqu'une créature est sélectionnée aléatoirement, les conditions suivantes s'appliquent :
+
+- **Si l'objet est destiné à être équipé**, seules les **créatures humanoïdes** avec un emplacement d'équipement libre sont éligibles. Un emplacement est considéré comme libre si aucun objet non droppable n'y est déjà équipé.
+- **Si l'objet est une arme ou un bouclier et doit être équipé**, seules les créatures possédant une compétence martiale suffisante pour manier l'objet seront retenues. Cela garantit que les créatures sélectionnées peuvent utiliser l'objet de manière optimale.
+- Seules les créatures qui possèdent au moins un emplacement d'inventaire libre sont éligibles à la sélection.
+
+Dans les cas où plusieurs mods ciblent la même créature ou que cette dernière est sélectionnée plusieurs fois pour un objet à équiper sur le même emplacement, une liste de trésors aléatoires sera automatiquement générée et assignée à la créature. L'objet final sera alors déterminé de manière aléatoire pendant la partie.
+
+Si aucune cible n'est spécifiée, elle sera choisie aléatoirement parmi l'ensemble des créatures disponibles.  
+Si aucune cible valide (créature, magasin ou conteneur) ne peut être trouvée, la règle de distribution sera ignorée.
 
 #### Exemples de cibles
 
