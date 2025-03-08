@@ -121,6 +121,60 @@ Dans les cas où plusieurs mods ciblent la même créature ou que cette dernièr
 Si aucune cible n'est spécifiée, elle sera choisie aléatoirement parmi l'ensemble des créatures disponibles.  
 Si aucune cible valide (créature, magasin ou conteneur) ne peut être trouvée, la règle de distribution sera ignorée.
 
+##### Différences entre la sélection d'un seul objet et de plusieurs objets  
+
+Les règles de distribution peuvent être configurées pour sélectionner un seul objet ou plusieurs objets aléatoirement. Chaque approche a ses propres avantages, inconvénients et cas d’usage spécifiques.
+
+###### Sélection d’un seul objet  
+
+**Description** :  
+Une seule instance d’un objet, choisi selon les filtres définis, est distribuée.  
+
+**Avantages** :  
+- Simplicité : idéal pour des distributions ciblées et directes.  
+- Prévisibilité : l’objet sélectionné est unique, ce qui facilite le suivi et l’équilibrage.  
+- Efficace pour des objets rares ou uniques qui ne doivent pas apparaître en plusieurs exemplaires.  
+
+**Inconvénients** :  
+- Moins de variété dans les objets distribués.  
+- Ne convient pas aux scénarios nécessitant plusieurs objets diversifiés.  
+
+**Cas d’usage** :  
+- Distribuer une arme spécifique à un boss ou à une créature importante.  
+- Ajouter un trésor précis à un coffre clé.  
+- Récompenser un joueur avec un objet particulier après une quête.
+
+###### Sélection de plusieurs objets  
+
+**Description** :  
+Plusieurs objets sont sélectionnés aléatoirement parmi ceux définis par les filtres et répartis selon les paramètres de distribution.  
+
+**Avantages** :  
+- Variété accrue : parfait pour enrichir les inventaires des cibles.  
+- Permet de simuler des trésors diversifiés ou des coffres bien remplis.  
+- Convient aux scénarios où la diversité est essentielle (par exemple, un coffre contenant des armes, des potions et des gemmes).  
+
+**Inconvénients** :  
+- Moins prévisible : difficile à équilibrer si la distribution est entièrement aléatoire.  
+- Peut compliquer le suivi des objets distribués, surtout avec des quantités importantes.  
+
+**Cas d’usage** :  
+- Répartir plusieurs objets aléatoires sur un groupe d’ennemis (par exemple, un mélange de potions et de flèches).  
+- Créer des trésors variés dans des coffres ou des conteneurs.  
+- Simuler un butin complexe dans des scénarios où la diversité est clé.  
+
+###### Résumé  
+
+| Critère                     | Sélection d’un seul objet                  | Sélection de plusieurs objets              |
+| --------------------------- | ----------------------------------------- | ----------------------------------------- |
+| **Simplicité**              | Facile à configurer et à suivre           | Plus complexe à équilibrer et à contrôler |
+| **Variété**                 | Limitée                                   | Importante                                |
+| **Cas d’usage typiques**    | Objets uniques ou rares                   | Trésors diversifiés ou inventaires riches |
+| **Prévisibilité**           | Très prévisible                           | Moins prévisible                          |
+
+Choisissez le type de règle en fonction de vos besoins : une sélection unique pour la précision, ou plusieurs objets pour la variété et la richesse des contenus distribués.
+
+
 #### Exemples de cibles
 
 | Description de la cible | Exemple | Code |
@@ -302,6 +356,10 @@ La définition de la cible serait alors : `dwarf.rce&male.gnd&evils.grp&ar0602.a
 - **male.gnd** : De genre masculin
 - **evils.grp** : D'alignement mauvais
 - **ar0602.are** : Dans le donjon d'Irenicus
+
+Il est aussi possible d'utiliser des négations pour exclure certaines cibles.  
+Si vous décidez de sélectionner les nains d'alignement non mauvais dans une zone spécifique.    
+L'exemple deviendra : `dwarf.rce&male.gnd&!evils.grp&ar0602.are`  
 
 <a name="groupes"></a>
 ## Les groupes
