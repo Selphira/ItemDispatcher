@@ -1,7 +1,7 @@
-BACKUP ~weidu_external/backup/%MOD_FOLDER%~
+BACKUP ~weidu_external/backup/ItemDispatcher~
 AUTHOR ~Selphira (https://www.baldursgateworld.fr/memberlist.php?mode=viewprofile&u=5323)~
 
-VERSION ~1~
+VERSION ~0.8-Beta~
 
 AUTO_EVAL_STRINGS
 
@@ -24,8 +24,8 @@ END
 LANGUAGE ~Francais~ ~french~
          ~%MOD_FOLDER%/tra/french/setup.tra~
 
-BEGIN ~Test~ DESIGNATED 0
-//SILENT
+BEGIN @0 DESIGNATED 0
+
 LAF ~log#init~ END
 LAF ~lists#merge~ END // Récupération des listes présentes dans les autres mods
 LAM ~data#load~       // Création des tableaux basés sur les données du jeu
