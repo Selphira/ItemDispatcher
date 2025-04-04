@@ -445,6 +445,48 @@ BEGIN
     END
 END
 
+DEFINE_DIMORPHIC_FUNCTION ~tool#array#multi_sort~
+    INT_VAR
+        sort_reverse = 0
+    STR_VAR
+        array_name = ~~
+        array_name2 = ~~
+    RET_ARRAY
+        array
+        array2
+BEGIN
+    LAF ~tool#array#clone~ STR_VAR array = ~%array_name%~ RET size = count RET_ARRAY array = new_array END
+    LAF ~tool#array#clone~ STR_VAR array = ~%array_name2%~ RET size2 = count  RET_ARRAY array2 = new_array END
+
+    ACTION_IF size != size2 BEGIN
+        FAIL ~tool#array#sort: La taille des 2 tableaux doit être identique~
+    END
+
+    OUTER_SET idx = 0
+    OUTER_SET reverse = sort_reverse == 1 ? 1 : 0
+
+    OUTER_FOR (j = 0; j < size - 1; ++j) BEGIN
+        OUTER_SET idx = j
+        OUTER_SET value1 = $array(~%idx%~)
+        OUTER_FOR (i = j + 1; i < size; ++i) BEGIN
+            OUTER_SET value2 = $array(~%i%~)
+            ACTION_IF (reverse && value2 > value1) || (NOT reverse && value2 < value1) BEGIN
+                OUTER_SET idx = i
+                OUTER_SET value1 = $array(~%idx%~)
+            END
+        END
+
+        ACTION_IF idx != j BEGIN
+            OUTER_SET value1 = $array(~%idx%~)
+            OUTER_SET $array(~%idx%~) = $array(~%j%~)
+            OUTER_SET $array(~%j%~) = value1
+            OUTER_SPRINT value1 $array2(~%idx%~)
+            OUTER_SPRINT $array2(~%idx%~) $array2(~%j%~)
+            OUTER_SPRINT $array2(~%j%~) ~%value1%~
+        END
+    END
+END
+
 DEFINE_DIMORPHIC_FUNCTION ~tool#item#get_charges~
     STR_VAR
         item = ~~
