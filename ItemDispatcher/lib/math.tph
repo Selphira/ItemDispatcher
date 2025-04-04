@@ -1,0 +1,66 @@
+/*
+ *  Calcule le Plus Grand Commun Diviseur (PGCD) entre deux entiers en utilisant l'algorithme d'Euclide (récursif).
+ *
+ *  INT_VAR
+ *      number1: premier entier
+ *      number2: second entier
+ *
+ *  RET
+ *      greatest_common_divisor: le PGCD de number1 et number2
+ */
+DEFINE_DIMORPHIC_FUNCTION ~math#greatest_common_divisor~
+    INT_VAR
+        number1 = 0
+        number2 = 0
+    RET
+        greatest_common_divisor
+BEGIN
+    ACTION_IF number2 == 0 BEGIN
+        // Cas de base : si number2 est 0, le PGCD est number1
+        OUTER_SET greatest_common_divisor = number1
+    END
+    ELSE BEGIN
+        // Appel récursif avec number2 et le reste de number1 / number2
+        OUTER_SET rest = number1 MODULO number2
+        LAF ~math#greatest_common_divisor~
+            INT_VAR number1 = number2 number2 = rest
+            RET greatest_common_divisor
+        END
+    END
+END
+
+
+/*
+ *  Calcule le Plus Grand Commun Diviseur (PGCD) d'une liste d'entiers stockée dans un tableau.
+ *  Utilise math#greatest_common_divisor pour faire une réduction progressive.
+ *
+ *  STR_VAR
+ *      array_name: nom du tableau contenant les entiers
+ *
+ *  RET
+ *      greatest_common_divisor: le PGCD global de tous les éléments du tableau
+ */
+DEFINE_DIMORPHIC_FUNCTION ~math#greatest_common_diviso#list~
+    STR_VAR
+        array_name = ~~
+    RET
+        greatest_common_divisor
+BEGIN
+    OUTER_SET index = 0
+    OUTER_SET greatest_common_divisor = 0
+
+    ACTION_PHP_EACH ~%array_name%~ AS _ => value BEGIN
+        ACTION_IF index == 0 BEGIN
+            // Initialisation : le premier élément devient le PGCD courant
+            OUTER_SET greatest_common_divisor = value
+        END
+        ELSE BEGIN
+            // Mise à jour du PGCD avec l'élément suivant
+            LAF ~math#greatest_common_divisor~
+                INT_VAR number1 = greatest_common_divisor number2 = value
+                RET greatest_common_divisor
+            END
+        END
+        OUTER_SET index += 1
+    END
+END
