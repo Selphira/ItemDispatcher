@@ -74,7 +74,7 @@ BEGIN
     // On ne garde que les objets déplaçables éligibles à la sélection aléatoire
     LPF ~array#intersect~ INT_VAR array_count = count_itm_targets array_count2 = $group_count(~group_itm_movable~) STR_VAR array_name = ~itm_targets~ array_name2 = ~group_itm_movable~ RET count_itm_targets = count RET_ARRAY itm_targets = array END
 
-    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
+    LPF ~string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY parts END
 
     PATCH_PHP_EACH parts AS index => part BEGIN
         SET $group_count(~group_temporary~) = 0
@@ -293,7 +293,7 @@ BEGIN
         BUT_ONLY
     END
 
-    LPF ~tool#string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY tmp_parts = parts END
+    LPF ~string#explode~ STR_VAR string = ~%target%~ separator = ~&~ RET_ARRAY tmp_parts = parts END
 
     // Optimisation pour les cas où l'on veut écarter toute une série de cibles bien précises
     // Ex: "gnome.rce&male.gnd&!npcs.grp&!udsvir07.cre&!quaylem.cre&!pptiax2.cre"

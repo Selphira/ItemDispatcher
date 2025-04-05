@@ -1,3 +1,20 @@
+/*
+ *  Calcule une quantité en fonction d'un paramètre donné.
+ *  Elle permet de gérer différents types de quantités comme les entiers ou les pourcentages.
+ *
+ *  INT_VAR
+ *      default: La valeur par défaut à utiliser si value ne correspond à aucun des cas attendus
+ *  STR_VAR
+ *      value: La chaîne représentant la quantité
+ *          - "-"   => Valeur par défaut
+ *          - "10"  => Valeur de 10
+ *          - "*"   => Valeur de 100%
+ *          - "9%"  => Valeur de 9%
+ *          - "1-8" => Valeur aléatoire entre 1 et 8
+ *  RET
+ *      is_percent: Indique si la quantité est un pourcentage (1) ou non (0)
+ *      quantity: La quantité déterminée par la fonction
+ */
 DEFINE_PATCH_FUNCTION ~tool#quantity~
     INT_VAR
         default = 1
@@ -42,6 +59,22 @@ BEGIN
     END
 END
 
+/*
+ *  Détermine la valeur minimale et maximale d'une plage donnée.
+ *  La fonction parse la valeur entrée pour déterminer si elle représente un nombre ou une plage.
+ *
+ *  INT_VAR
+ *      min: La valeur minimale par défaut
+ *      max: La valeur maximale par défaut
+ *  STR_VAR
+ *      value: La chaîne représentant la plage de valeurs
+ *          - "10+" => Valeur entre 10 et max
+ *          - "10-" => Valeur entre min et 10
+ *          - "2-9" => Valeur entre 2 et 9 (ne peuvent pas dépasser les bornes min et max)
+ *  RET
+ *      min: La valeur minimale de la plage
+ *      max: La valeur maximale de la plage
+ */
 DEFINE_DIMORPHIC_FUNCTION ~tool#range~
     INT_VAR
         min = 0
@@ -86,6 +119,20 @@ BEGIN
     END
 END
 
+/*
+ *  Convertit un paramètre d'entrée en valeur booléenne (0 ou 1).
+ *
+ *  INT_VAR
+ *      default: La valeur par défaut
+ *  STR_VAR
+ *      value: La valeur à convertir en booléen
+ *          - "0" => Valeur de 0
+ *          - "1" => Valeur de 1
+ *          - "?" => Valeur aléatoire entre 1 et 0
+ *          - Toute autre valeur => Valeur par défaut
+ *  RET
+ *      boolean: La valeur booléenne
+ */
 DEFINE_PATCH_FUNCTION ~tool#boolean~
     INT_VAR
         default = 0
@@ -104,9 +151,21 @@ BEGIN
     END
 END
 
+/*
+ *  Ajuste une valeur entière en fonction des bornes min et max spécifiées.
+ *
+ *  INT_VAR
+ *      default: La valeur par défaut
+ *      min: La valeur minimale
+ *      max: La valeur maximale
+ *  STR_VAR
+ *      value: La valeur à ajuster
+ *  RET
+ *      integer: La valeur entière ajustée
+ */
 DEFINE_PATCH_FUNCTION ~tool#integer~
     INT_VAR
-        default = 100
+        default = 0
         min = 0
         max = 0
     STR_VAR
@@ -116,7 +175,7 @@ DEFINE_PATCH_FUNCTION ~tool#integer~
 BEGIN
     SET ~integer~ = default
 
-    PATCH_IF IS_AN_INT value AND value > 0 AND value <= 100 BEGIN
+    PATCH_IF IS_AN_INT value BEGIN
         SET ~integer~ = value
     END
 
@@ -192,101 +251,6 @@ BEGIN
             SET count += 1
         END
     END
-END
-
-DEFINE_DIMORPHIC_FUNCTION ~tool#string#explode~
-    INT_VAR
-        to_key = 0
-    STR_VAR
-        string = ~~
-        separator = ~ ~
-    RET
-        count
-    RET_ARRAY
-        parts
-BEGIN
-    ACTION_DEFINE_ARRAY ~parts~ BEGIN END
-
-    OUTER_SPRINT ~list~ ~%string%~
-    OUTER_SET count = 0
-
-    OUTER_WHILE ~%list%~ STRING_COMPARE ~~ BEGIN
-        OUTER_PATCH_SAVE list "%list%" BEGIN
-            SET test = BUFFER_LENGTH
-
-            PATCH_IF BUFFER_LENGTH > 0 BEGIN
-                SET pointer = 0
-                SET found   = 0
-                WHILE !found BEGIN
-                    READ_ASCII pointer char (1)
-                    SET pointer += 1
-
-                    PATCH_IF ~%char%~ STRING_EQUAL ~%separator%~ BEGIN
-                        SET found = 1
-                    END
-
-                    PATCH_IF pointer == BUFFER_LENGTH BEGIN
-                        SET found = 1
-                        SET pointer += 1
-                    END
-                END
-
-                READ_ASCII 0x0 part (pointer - 1)
-                DELETE_BYTES 0x0 (pointer - 1)
-            END
-        END
-
-        ACTION_IF STRING_LENGTH ~%part%~ == 0 BEGIN
-            FAIL ~Invalid string : %string%~
-        END
-
-        OUTER_PATCH_SAVE list "%list%" BEGIN
-            REPLACE_TEXTUALLY "^%separator%\(.*\)$" "\1"
-        END
-
-        ACTION_IF to_key == 0 BEGIN
-            ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
-                OUTER_PATCH_SAVE part "%part%" BEGIN
-                    REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
-                END
-                OUTER_SPRINT $parts(~%count%~) ~%part%~
-                OUTER_SET count += 1
-                OUTER_SPRINT $parts(~%count%~) ~~
-                OUTER_SET count += 1
-            END
-            ELSE BEGIN
-                OUTER_SPRINT $parts(~%count%~) ~%part%~
-                OUTER_SET count += 1
-            END
-        END
-        ELSE BEGIN
-            ACTION_IF ~%part%~ STRING_MATCHES_REGEXP ~^\(.*\)%separator%$~ == 0 BEGIN
-                OUTER_PATCH_SAVE part "%part%" BEGIN
-                    REPLACE_TEXTUALLY "^\(.*\)%separator%$" "\1"
-                END
-                OUTER_SPRINT $parts(~%part%~) ~%count%~
-                OUTER_SET count += 1
-            END
-            ELSE BEGIN
-                OUTER_SPRINT $parts(~%part%~) ~%count%~
-                OUTER_SET count += 1
-            END
-        END
-    END
-END
-
-DEFINE_DIMORPHIC_FUNCTION ~tool#string#pad_left~
-    INT_VAR
-        min_length = 1
-    STR_VAR
-        string = ~~
-        pad = ~0~
-    RET
-        string
-BEGIN
-	OUTER_WHILE (STRING_LENGTH ~%string%~ < min_length) BEGIN
-		OUTER_TEXT_SPRINT string ~%pad%%string%~
-	END
 END
 
 DEFINE_DIMORPHIC_FUNCTION ~tool#item#get_charges~
