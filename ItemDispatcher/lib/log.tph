@@ -84,4 +84,9 @@ BEGIN
 	        LAF ~log#add#debug~ STR_VAR message = ~Liste : %group_name% : %count%~ END
 	    END
 	END
+
+	// Les listes des trésors aléatoires
+	ACTION_PHP_EACH ~random_treasures~ AS treasure_name => line BEGIN
+	    LAF ~log#add#debug~ STR_VAR message = ~Trésor aléaoire : %line%~ END
+	END
 END
