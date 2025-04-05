@@ -1,0 +1,337 @@
+/*
+ *  Crée une copie d'un tablau.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du tableau à cloner
+ *  RET
+ *      count: Le nombre d'éléments du tableau cloné
+ *  RET_ARRAY
+ *      array: Le tableau cloné
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#clone~
+    STR_VAR
+        array_name = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY array
+    ACTION_PHP_EACH ~%array_name%~ AS key => value BEGIN
+        OUTER_SPRINT $array(~%key%~) ~%value%~
+        OUTER_SET count += 1
+    END
+END
+
+/*
+ *  Retourne le nombre d'éléments d'un tablau.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du tableau dont on veut compter les éléments
+ *  RET
+ *      count: Le nombre d'éléments du tableau
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#count~
+    STR_VAR
+        array_name = ~~
+    RET
+        count
+BEGIN
+	OUTER_SET count = 0
+
+	ACTION_PHP_EACH ~%array_name%~ AS entry => _ BEGIN
+		OUTER_SET count += 1
+	END
+END
+
+/*
+ *  Retourne les éléments d'un tableau qui ne sont pas présents dans un autre tableau.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du tableau de référence
+ *      array_name2: Le nom du tableau à comparer
+ *  RET
+ *      count: Le nombre d'éléments du tableau retourné
+ *  RET_ARRAY
+ *      array: Le tableau des éléments présents dans array_name mais pas dans array_name2
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#diff~
+    STR_VAR
+        array_name = ~~
+        array_name2 = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY array
+
+    ACTION_PHP_EACH ~%array_name%~ AS key => value BEGIN
+        ACTION_IF NOT VARIABLE_IS_SET $~%array_name2%~(~%key%~) BEGIN
+            OUTER_SPRINT $array(~%key%~) ~%value%~
+            OUTER_SET count += 1
+        END
+    END
+END
+
+/*
+ *  Retourne un nombre aléatoire d'éléments dans un tableau.
+ *
+ *  INT_VAR
+ *      array_count: Le nombre d'éléments dans le tableau
+ *      number_to_select: Le nombre d'éléments à sélectionner aléatoirement
+ *  STR_VAR
+ *      array_name: Le nom du tableau dont les éléments seront sélectionnés
+ *  RET
+ *      count: Le nombre d'éléments du tableau retourné
+ *  RET_ARRAY
+ *      array: Le tableau contenant les éléments sélectionnés
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#get_random~
+    INT_VAR
+        array_count = 0
+        number_to_select = 0
+    STR_VAR
+        array_name = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    ACTION_CLEAR_ARRAY array
+
+    ACTION_IF array_count <= number_to_select BEGIN
+        LAF ~array#clone~ STR_VAR array_name RET count RET_ARRAY array END
+    END
+    ELSE BEGIN
+        OUTER_SET count = number_to_select
+        OUTER_FOR (index = 0; index < number_to_select; ++index) BEGIN
+            OUTER_SET selected = RANDOM(1 array_count)
+            OUTER_SPRINT $array(~%index%~) $~%array_name%~(~%selected%~)
+            OUTER_SPRINT $~%array_name%~(~%selected%~) $~%array_name%~(~%array_count%~)
+            OUTER_SET array_count -= 1
+        END
+    END
+END
+
+/*
+ *  Retourne les éléments présents dans les deux tableaux)
+ *
+ *  INT_VAR
+ *      array_count: Le nombre d'éléments du premier tableau
+ *      array_count2: Le nombre d'éléments du second tableau
+ *  STR_VAR
+ *      array_name: Le nom du premier tableau à comparer
+ *      array_name2: Le nom du second tableau à comparer
+ *  RET
+ *      count: Le nombre d'éléments du tableau retourné
+ *  RET_ARRAY
+ *      array: Le tableau contenant les éléments communs aux deux tableaux
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#intersect~
+    INT_VAR
+        array_count = 0
+        array_count2 = 0
+    STR_VAR
+        array_name = ~~
+        array_name2 = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    OUTER_SET count = 0
+    ACTION_CLEAR_ARRAY array
+
+    ACTION_IF array_count > 0 AND array_count2 > 0 BEGIN
+        //FIXME: Problème avec l'optimisation
+        //       Il semble que le VARIABLE_IS_SET retourne VRAI lorsque le tableau est inversé
+        //       Généralement, le tableau 1 est celui qui a contenu à un moment donné toutes les possibilités.
+        //       Le PHP_EACH ne trouve cependant pas les entrées dont le VARIABLE_IS_SET retourne VRAI.
+        /*
+        ACTION_IF array_count > array_count2 BEGIN
+            OUTER_SPRINT tmp ~%array_name%~
+            OUTER_SPRINT array_name ~%array_name2%~
+            OUTER_SPRINT array_name2 ~%tmp%~
+        END
+        */
+
+        ACTION_PHP_EACH ~%array_name%~ AS key => value BEGIN
+            ACTION_IF VARIABLE_IS_SET $~%array_name2%~(~%key%~) BEGIN
+                OUTER_SPRINT $array(~%key%~) ~%value%~
+                OUTER_SET count += 1
+            END
+        END
+    END
+END
+
+/*
+ *  Fusionne deux tableaux en ajoutant tous les éléments du deuxième tableau au premier.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du premier tableau à fusionner
+ *      array_name2: Le nom du second tableau à fusionner
+ *  RET
+ *      count: Le nombre d'éléments du tableau fusionné
+ *  RET_ARRAY
+ *      array: Le tableau fusionné
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#merge~
+    STR_VAR
+        array_name = ~~
+        array_name2 = ~~
+    RET
+        count
+    RET_ARRAY
+        array
+BEGIN
+    OUTER_SET count = 0
+
+    ACTION_PHP_EACH ~%array_name2%~ AS key => value BEGIN
+        OUTER_SPRINT $array(~%key%~) ~%value%~
+    END
+
+    ACTION_PHP_EACH ~%array_name%~ AS key => value BEGIN
+        OUTER_SET count += 1
+    END
+END
+
+/*
+ *  Trie deux tableaux parallèles en fonction des valeurs du premier tableau, avec une option pour inverser l'ordre du
+ *  tri.
+ *
+ *  INT_VAR
+ *      reverse: Si 0, trie dans l’ordre croissant, sinon trie dans l'ordre décroissant
+ *  STR_VAR
+ *      array_name: Le nom du premier tableau à trier
+ *      array_name2: Le nom du second tableau à trier en parallèle
+ *  RET_ARRAY
+ *      array: Le premier tableau trié
+ *      array2: Le second tableau trié
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#multi_sort~
+    INT_VAR
+        reverse = 0
+    STR_VAR
+        array_name = ~~
+        array_name2 = ~~
+    RET_ARRAY
+        array
+        array2
+BEGIN
+    LAF ~array#clone~ STR_VAR array_name RET size = count RET_ARRAY array END
+    LAF ~array#clone~ STR_VAR array_name = ~%array_name2%~ RET size2 = count RET_ARRAY array2 = array END
+
+    ACTION_IF size != size2 BEGIN
+        FAIL ~array#sort: The size of the 2 arrays must be equal~
+    END
+
+    OUTER_SET idx = 0
+
+    // Tri à bulle sur les tableaux
+    OUTER_FOR (i = 0; i < size - 1; ++i) BEGIN
+        OUTER_SET idx = i
+        OUTER_SET value1 = $array(~%idx%~)
+        OUTER_FOR (j = i + 1; j < size; ++j) BEGIN
+            OUTER_SET value2 = $array(~%j%~)
+            ACTION_IF (reverse && value2 > value1) || (NOT reverse && value2 < value1) BEGIN
+                OUTER_SET idx = j
+                OUTER_SET value1 = $array(~%idx%~)
+            END
+        END
+
+        ACTION_IF idx != i BEGIN
+            OUTER_SET value1 = $array(~%idx%~)
+            OUTER_SET $array(~%idx%~) = $array(~%i%~)
+            OUTER_SET $array(~%i%~) = value1
+            OUTER_SPRINT value1 $array2(~%idx%~)
+            OUTER_SPRINT $array2(~%idx%~) $array2(~%i%~)
+            OUTER_SPRINT $array2(~%i%~) ~%value1%~
+        END
+    END
+END
+
+/*
+ *  Génère un tableau contenant les entiers dans un intervalle donné.
+ *
+ *  INT_VAR
+ *      min: La valeur minimale de l'intervalle
+ *      max: La valeur maximale de l'intervalle
+ *  STR_VAR
+ *      value: La chaîne représentant l'intervalle à générer (Ex: 4-9, 9+, 4- )
+ *  RET
+ *      count: Le nombre d'éléments du tableau retourné
+ *      min: La valeur minimale du tableau retourné
+ *      max: La valeur maximale du tableau retourné
+ *  RET_ARRAY
+ *      array: Le tableau contenant les entiers dans l'intervalle
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#range~
+    INT_VAR
+        min = 0
+        max = 0
+    STR_VAR
+        value = ~~
+    RET
+        count
+        min
+        max
+    RET_ARRAY
+        array
+BEGIN
+    ACTION_DEFINE_ARRAY ~array~ BEGIN END
+    OUTER_SET count = 0
+    LAF ~tool#range~ INT_VAR min max STR_VAR value RET min max END
+    OUTER_FOR (idx = min; idx <= max; ++idx) BEGIN
+        OUTER_SET $array(~%idx%~) = idx
+        OUTER_SET count += 1
+    END
+END
+
+/*
+ *  Réduit un tableau à un nombre limité d'éléments.
+ *
+ *  INT_VAR
+ *      limit: Le nombre maximal d'éléments à conserver
+ *  STR_VAR
+ *      array_name: Le nom du tableau à tronquer
+ *  RET_ARRAY
+ *      array: Le tableau tronqué
+ */
+DEFINE_DIMORPHIC_FUNCTION ~array#slice~
+    INT_VAR
+        limit = 0
+    STR_VAR
+        array_name = ~~
+    RET_ARRAY
+        array
+BEGIN
+    LAF ~array#count~ STR_VAR array_name RET total_count = count END
+
+    // On ne garde que les limit éléments du tableau
+    ACTION_IF total_count > limit BEGIN
+        LAF ~log#add#warning~ STR_VAR message = ~%SOURCE_RES% : More than %limit% items detected after fusion~ END
+
+        OUTER_SET index = 0
+        ACTION_CLEAR_ARRAY ~values_list~
+        ACTION_CLEAR_ARRAY ~keys_list~
+
+        ACTION_PHP_EACH ~list~ AS key => value BEGIN
+            OUTER_SPRINT $keys_list(~%index%~) ~%key%~
+            OUTER_SET $values_list(~%index%~) = value
+            OUTER_SET index += 1
+        END
+
+        ACTION_CLEAR_ARRAY ~array~
+
+        OUTER_FOR (idx = 0; idx < limit; ++idx) BEGIN
+            OUTER_SPRINT key $keys_list(~%idx%~)
+            OUTER_SET $array(~%key%~) = $values_list(~%idx%~)
+        END
+    END
+    ELSE BEGIN
+        LAF ~array#clone~ STR_VAR array_name RET count_selected = count RET_ARRAY array END
+    END
+END

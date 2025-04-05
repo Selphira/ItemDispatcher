@@ -2,11 +2,10 @@
  *  Calcule le Plus Grand Commun Diviseur (PGCD) entre deux entiers en utilisant l'algorithme d'Euclide (récursif).
  *
  *  INT_VAR
- *      number1: premier entier
- *      number2: second entier
- *
+ *      number1: Le premier entier
+ *      number2: Le second entier
  *  RET
- *      greatest_common_divisor: le PGCD de number1 et number2
+ *      greatest_common_divisor: Le PGCD de number1 et number2
  */
 DEFINE_DIMORPHIC_FUNCTION ~math#greatest_common_divisor~
     INT_VAR
@@ -35,10 +34,9 @@ END
  *  Utilise math#greatest_common_divisor pour faire une réduction progressive.
  *
  *  STR_VAR
- *      array_name: nom du tableau contenant les entiers
- *
+ *      array_name: Le nom du tableau contenant les entiers
  *  RET
- *      greatest_common_divisor: le PGCD global de tous les éléments du tableau
+ *      greatest_common_divisor: Le PGCD global de tous les éléments du tableau
  */
 DEFINE_DIMORPHIC_FUNCTION ~math#greatest_common_diviso#list~
     STR_VAR
