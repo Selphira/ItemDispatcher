@@ -980,7 +980,7 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_category_to_item_slot_limit~ BEGIN
 	9  => 20 // quick item
 	10 => 5  // ring
 	11 => 20 // quick item
-	14 => 18 // quiver
+	14 => 16 // quiver
 	15 => 12 // weapon
 	16 => 12 // weapon
 	17 => 12 // weapon
@@ -997,5 +997,5 @@ ACTION_DEFINE_ASSOCIATIVE_ARRAY ~item_category_to_item_slot_limit~ BEGIN
 	28 => 12 // weapon
 	29 => 12 // weapon
 	30 => 12 // weapon
-	31 => 15 // quiver
+	31 => 16 // quiver
 END
