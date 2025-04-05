@@ -1,0 +1,203 @@
+/*
+ *  Cette fonction charge une liste d'objets à partir d'un fichier 2DA, en associant chaque objet à un pourcentage de
+ *  probabilité d'apparition.
+ *  Elle fusionne les entrées dupliquées et, si le nombre d'objets dépasse une limite donnée (par défaut 100),
+ *  conserve uniquement les [limit] objets avec la plus forte probabilité.
+ *  Les probabilités non renseignées dans le fichier 2da seront calculées automatiquement de manière proportionnelle.
+ *
+ *  INT_VAR
+ *      limit: Détermine le nombre maximal d'objets dans la liste finale
+ *  RET
+ *      line: La ligne à insérer dans le fichier RNDTRES.tra
+ */
+DEFINE_PATCH_FUNCTION ~treasure#load~
+    INT_VAR
+        limit = 100
+    RET
+        line
+BEGIN
+    CLEAR_ARRAY ~list~
+    CLEAR_ARRAY ~chances_list~
+    CLEAR_ARRAY ~items_list~
+
+    PATCH_DEFINE_ARRAY ~list~ BEGIN END
+    PATCH_DEFINE_ARRAY ~items_list~ BEGIN END
+    PATCH_DEFINE_ARRAY ~chances_list~ BEGIN END
+
+    READ_2DA_ENTRIES_NOW ~rows~ 3
+
+    // Chargement de la liste 2da
+    FOR (row = 0; row < rows; ++row) BEGIN
+        READ_2DA_ENTRY_FORMER ~rows~ row  0 item
+        READ_2DA_ENTRY_FORMER ~rows~ row  1 chance
+        READ_2DA_ENTRY_FORMER ~rows~ row  2 mod_name
+
+        PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%.itm~ BEGIN
+            LPF ~log#add#warning~ STR_VAR message = ~%item%.itm : Item not exist in game for treasure list %SOURCE_RES% (%mod_name%)~ END
+        END
+        ELSE BEGIN
+            PATCH_IF IS_AN_INT chance BEGIN
+                PATCH_IF VARIABLE_IS_SET $list(~%item%~) BEGIN
+                    SET $list(~%item%~) += chance
+                END
+                ELSE BEGIN
+                    SET $list(~%item%~) = chance
+                END
+            END
+            ELSE PATCH_IF NOT VARIABLE_IS_SET $list(~%item%~) BEGIN
+                SET $list(~%item%~) = 0
+            END
+        END
+    END
+
+    LPF ~treasure#sort~ STR_VAR array_name = ~list~ RET_ARRAY list END
+    LPF ~array#slice~ INT_VAR limit STR_VAR array_name = ~list~ RET_ARRAY list = array END
+    LPF ~treasure#adjust_chances~ STR_VAR array_name = ~list~ RET_ARRAY list END
+    LPF ~treasure#list_to_2da~ STR_VAR treasure_name = ~%SOURCE_RES%~ array_name = ~list~ RET line END
+END
+
+/*
+ *  Trie les objets de la liste par ordre décroissant de probabilité d'apparition.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du tableau à trier
+ *  RET_ARRAY
+ *      list: Le tableau trié
+ */
+DEFINE_PATCH_FUNCTION ~treasure#sort~
+    STR_VAR
+        array_name = ~~
+    RET_ARRAY
+        list
+BEGIN
+    CLEAR_ARRAY ~chances_list~
+    CLEAR_ARRAY ~items_list~
+
+    SET index = 0
+
+    PATCH_PHP_EACH ~%array_name%~ AS item => chance BEGIN
+        SPRINT $items_list(~%index%~) ~%item%~
+        SET $chances_list(~%index%~) = chance
+        SET index += 1
+    END
+
+    LPF ~array#multi_sort~ INT_VAR reverse = 1 STR_VAR array_name = ~chances_list~ array_name2 = ~items_list~ RET_ARRAY chances_list = array items_list = array2 END
+
+    CLEAR_ARRAY ~list~
+
+    PATCH_PHP_EACH ~chances_list~ AS idx => chance BEGIN
+        SPRINT item $items_list(~%idx%~)
+        SET $list(~%item%~) = chance
+    END
+END
+
+DEFINE_PATCH_FUNCTION ~treasure#adjust_chances~
+    INT_VAR
+        limit = 100
+    STR_VAR
+        array_name = ~~
+    RET_ARRAY
+        list
+BEGIN
+    SET total_sum = 0
+    SET items_without_chance = 0
+    SET items_with_chance = 0
+
+    LPF ~array#clone~ STR_VAR array_name RET_ARRAY list = array END
+
+    PATCH_PHP_EACH ~list~ AS item => chance BEGIN
+        PATCH_IF chance == 0 BEGIN
+            SET items_without_chance += 1
+        END
+        ELSE BEGIN
+            SET total_sum += chance
+            SET items_with_chance += 1
+        END
+    END
+
+    PATCH_IF total_sum + items_without_chance > 100 BEGIN
+        // La somme est supérieure à 100%, réduction proportionnelle et assignation de 1% aux objets sans pourcentage
+        CLEAR_ARRAY ~chances_list~
+        CLEAR_ARRAY ~items_list~
+
+        SET index = 0
+        SET total = total_sum + items_without_chance
+        SET total_chance = 0
+        PATCH_PHP_EACH ~list~ AS item => chance BEGIN
+            SPRINT $items_list(~%index%~) ~%item%~
+            PATCH_IF chance > 0 BEGIN
+                SET new_chance = chance * 100 / total
+                SET $chances_list(~%index%~) = new_chance > 1 ? new_chance : 1
+                SET total_chance += $chances_list(~%index%~)
+            END
+            ELSE BEGIN
+                SET $chances_list(~%index%~) = 1
+            END
+            SET index += 1
+        END
+
+        // Correction suite aux arrondis perdus
+        SET missing = 100 - total_chance - items_without_chance
+
+        FOR (idx = 0; idx < missing; ++idx) BEGIN
+            SET index = idx MODULO total
+            SET $chances_list(~%index%~) += 1
+        END
+
+        CLEAR_ARRAY ~list~
+
+        PATCH_PHP_EACH ~chances_list~ AS idx => chance BEGIN
+            SPRINT item $items_list(~%idx%~)
+            SET $list(~%item%~) = chance
+        END
+    END
+    ELSE PATCH_IF total_sum + items_without_chance < 100 BEGIN
+        // La somme est inférieure à 100%, répartition du manque aux objets sans pourcentage en priorité
+        SET missing = 100 - total_sum
+        SET number_to_distribute = items_without_chance == 0 ? items_with_chance : items_without_chance
+        SET add_per_item = missing / number_to_distribute
+        SET remain = missing MODULO number_to_distribute
+        SET index = 0
+
+        PATCH_PHP_EACH ~list~ AS item => chance BEGIN
+            PATCH_IF chance == 0 OR items_without_chance == 0 BEGIN
+                SET $list(~%item%~) += add_per_item
+                PATCH_IF remain > 0 BEGIN
+                    SET $list(~%item%~) += 1
+                    SET remain -= 1
+                END
+                SET index += 1
+            END
+        END
+    END
+END
+
+/*
+ *  Génère une ligne destinée à être ajoutée dans le fichier RNDTRES.2da.
+ *  Le nombre d'éléments est réduit à son maximum en fonction du plus grand dénominateur commun des chances d'apparition
+ *  Le nombre maximum d'entrées sur une ligne est de 100.
+ *
+ *  STR_VAR
+ *      array_name: Le nom du tableau contenant les éléments
+ *      treasure_name: Le nom du trésor
+ *  RET
+ *      line: La ligne à insérer dans le fichier RNDTRES.tra
+ */
+DEFINE_PATCH_FUNCTION ~treasure#list_to_2da~
+    STR_VAR
+        array_name = ~~
+        treasure_name = ~~
+    RET
+        line
+BEGIN
+    LPF ~math#greatest_common_diviso#list~ STR_VAR array_name RET divisor = greatest_common_divisor END
+
+    SPRINT line ~%treasure_name%~
+
+    PATCH_PHP_EACH ~%array_name%~ AS item => chance BEGIN
+        SET repetition = chance / divisor
+        FOR (i = 0; i < repetition; ++i) BEGIN
+            SPRINT line ~%line%%TAB%%item%~
+        END
+    END
+END
