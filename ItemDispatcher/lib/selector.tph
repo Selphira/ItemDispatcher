@@ -427,6 +427,9 @@ DEFINE_PATCH_FUNCTION ~selector#target#parse_part~
         group_name
         group_type
 BEGIN
+    SPRINT group_name ~~
+    SPRINT group_type ~~
+
     INNER_PATCH ~%part%~ BEGIN
         REPLACE_EVALUATE ~\(!?\)\(.+\)~ BEGIN
             SET is_negative = ~%MATCH1%~ STRING_EQUAL ~!~ ? 1 : 0
