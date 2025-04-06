@@ -5,16 +5,26 @@
  *  conserve uniquement les [limit] objets avec la plus forte probabilité.
  *  Les probabilités non renseignées dans le fichier 2da seront calculées automatiquement de manière proportionnelle.
  *
+ *  STR_VAR
+ *      target: Le nom du trésor à charger
  *  INT_VAR
  *      limit: Détermine le nombre maximal d'objets dans la liste finale
  *  RET
  *      line: La ligne à insérer dans le fichier RNDTRES.tra
+ *  RET_ARRAY
+ *      random_treasures: Dictionnaire contenant les trésors déjà générés
+ *      random_treasure_names: Dictionnaire contenant les noms des trésors déjà générés
  */
 DEFINE_PATCH_FUNCTION ~treasure#load~
     INT_VAR
         limit = 100
+    STR_VAR
+        target = ~~
     RET
         line
+    RET_ARRAY
+        random_treasures
+        random_treasure_names
 BEGIN
     CLEAR_ARRAY ~list~
     CLEAR_ARRAY ~chances_list~
@@ -33,7 +43,7 @@ BEGIN
         READ_2DA_ENTRY_FORMER ~rows~ row  2 mod_name
 
         PATCH_IF NOT FILE_EXISTS_IN_GAME ~%item%.itm~ BEGIN
-            LPF ~log#add#warning~ STR_VAR message = ~%item%.itm : Item not exist in game for treasure list %SOURCE_RES% (%mod_name%)~ END
+            LPF ~log#add#warning~ STR_VAR message = ~%item%.itm : Item not exist in game for treasure list %target% (%mod_name%)~ END
         END
         ELSE BEGIN
             PATCH_IF IS_AN_INT chance BEGIN
@@ -53,7 +63,10 @@ BEGIN
     LPF ~treasure#sort~ STR_VAR array_name = ~list~ RET_ARRAY list END
     LPF ~array#slice~ INT_VAR limit STR_VAR array_name = ~list~ RET_ARRAY list = array END
     LPF ~treasure#adjust_chances~ STR_VAR array_name = ~list~ RET_ARRAY list END
-    LPF ~treasure#list_to_2da~ STR_VAR treasure_name = ~%SOURCE_RES%~ array_name = ~list~ RET line END
+    LPF ~treasure#list_to_2da~ STR_VAR treasure_name = ~%target%~ array_name = ~list~ RET line END
+
+    SPRINT $random_treasures(~%target%.rnd~) ~%line%~
+    SPRINT $random_treasure_names(~%target%.rnd~) ~%target%~
 END
 
 /*
@@ -199,5 +212,94 @@ BEGIN
         FOR (i = 0; i < repetition; ++i) BEGIN
             SPRINT line ~%line%%TAB%%item%~
         END
+    END
+END
+
+/*
+ *  Génère dynamiquement un trésor aléatoire à partir d'une cible, puis le stocke dans un cache global pour éviter les
+ *  doublons.
+ *  Le trésor est ensuite formaté et stocké dans RNDTRES.2da avec un nom unique.
+ *
+ *  STR_VAR
+ *      target: Identifiant du trésor à convertir (ex: "rnd:amulet.cat" ou "mytres.rnd")
+ *  RET
+ *      treasure_name: Nom généré du fichier trésor (ex: "RID00001")
+ *      treasure_count: Compteur de trésors créés (utilisé pour le nommage des trésors dynamiques)
+ *      line: La ligne formatée écrite dans RNDTRES.2da
+ *  RET_ARRAY
+ *      random_treasures: Dictionnaire contenant les trésors déjà générés
+ *      random_treasure_names: Dictionnaire contenant les noms des trésors déjà générés
+ */
+DEFINE_ACTION_FUNCTION ~treasure#from_target~
+    STR_VAR
+        target = ~~
+    RET
+        treasure_name
+        treasure_count
+        line
+    RET_ARRAY
+        random_treasures
+        random_treasure_names
+BEGIN
+    OUTER_SPRINT treasure_name ~~
+    OUTER_SET treasure_count = 0
+
+    ACTION_IF NOT VARIABLE_IS_SET $random_treasures(~%target%~) BEGIN
+        ACTION_IF ~%target%~ STRING_MATCHES_REGEXP ~^rnd:[a-z0-9_#\.&]*$~ == 0 BEGIN
+            OUTER_PATCH_SAVE target ~%target%~ BEGIN
+                REPLACE_TEXTUALLY EVALUATE_REGEXP ~^\(rnd:\)\([a-z0-9_#\.&]*\)$~ ~\2~
+            END
+        END
+        ELSE BEGIN
+            FAIL ~Le trésor aléatoire fixe n'existe pas : %target%~
+        END
+
+        // Créer le trésor aléatoire dans RNDTRES.2da et retourner le nom du fichier
+        OUTER_SET treasure_count += 1
+        LAF ~string#pad_left~ INT_VAR min_length = 5 STR_VAR string = ~%treasure_count%~ RET string END
+
+        OUTER_SPRINT item_name ~RID%string%~
+        OUTER_SPRINT line ~%item_name%~
+
+        OUTER_PATCH ~~ BEGIN
+            LPF ~selector#item#get~ INT_VAR count = 100 count_is_percent = 1 STR_VAR target = ~%target%~ RET count_items RET_ARRAY items END
+        END
+
+        ACTION_IF count_items == 0 BEGIN
+            FAIL ~Aucun objet pour créer le trésor aléatoire dynamique : %target%~
+        END
+
+        ACTION_PHP_EACH ~items~ AS key => value BEGIN
+            OUTER_PATCH_SAVE ~value~ ~%value%~ BEGIN REPLACE_TEXTUALLY ~.itm~ ~~ END
+            OUTER_SPRINT line ~%line%%TAB%%value%~
+        END
+
+        OUTER_SPRINT $random_treasures(~%target%~) ~%line%~
+        OUTER_SPRINT $random_treasure_names(~%target%~) ~%item_name%~
+
+        LAF ~treasure#save~ STR_VAR target END
+    END
+
+    OUTER_SPRINT treasure_name $random_treasure_names(~%target%~)
+    OUTER_SPRINT line $random_treasures(~%target%~)
+END
+
+/*
+ *  Sauvegarde un trésor aléatoire généré précédemment dans le fichier RNDTRES.2da, et crée une copie physique d’un
+ *  modèle d’objet "rndtre01.itm" avec le bon nom.
+ *
+ *  STR_VAR
+ *      target: Identifiant du trésor à sauvegarder (ex: "rnd:amulet.cat" ou "mytres.rnd")
+ */
+DEFINE_DIMORPHIC_FUNCTION ~treasure#save~
+    STR_VAR
+        target = ~~
+BEGIN
+    ACTION_IF VARIABLE_IS_SET $random_treasures(~%target%~) BEGIN
+        OUTER_SPRINT treasure_name $random_treasure_names(~%target%~)
+        OUTER_SPRINT line $random_treasures(~%target%~)
+
+        APPEND ~rndtres.2da~ ~%line%~ UNLESS ~^%treasure_name%%TAB%~
+        COPY_EXISTING ~rndtre01.itm~ ~override/%treasure_name%.itm~
     END
 END

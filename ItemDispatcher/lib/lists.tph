@@ -422,8 +422,7 @@ DEFINE_ACTION_MACRO ~lists#load#treasures~
 BEGIN
     OUTER_SPRINT ~load_file_path~ ~%workspace%/treasures~
 	COPY "%load_file_path%" "override"
-	    LPF ~treasure#load~ INT_VAR limit = 5 RET line END
-
-	    SPRINT $random_treasures(~%SOURCE_RES%~) ~%line%~
+	    LPF ~treasure#load~ INT_VAR limit = 5 STR_VAR target = ~%SOURCE_RES%~ RET line RET_ARRAY random_treasures random_treasure_names END
+        LPF ~treasure#save~ STR_VAR target = ~%SOURCE_RES%.rnd~ END
 	BUT_ONLY
 END
